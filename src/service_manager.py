@@ -23,15 +23,29 @@ logging.basicConfig(
 logger = logging.getLogger("ServiceManager")
 
 SERVICES = {
-    "orchestrator": {
-        "command": [sys.executable, "src/orchestrator.py"],
-        "cwd": str(BASE_DIR),
-        "restart_delay": 5
-    },
     "gmail_watcher": {
         "command": [sys.executable, "src/watchers/gmail_watcher.py"],
         "cwd": str(BASE_DIR),
-        "restart_delay": 5
+        "restart_delay": 5,
+        "description": "Gmail inbox monitor"
+    },
+    "filesystem_watcher": {
+        "command": [sys.executable, "src/watchers/filesystem_watcher.py"],
+        "cwd": str(BASE_DIR),
+        "restart_delay": 5,
+        "description": "Filesystem drop folder monitor"
+    },
+    "whatsapp_watcher": {
+        "command": [sys.executable, "src/watchers/whatsapp_watcher.py"],
+        "cwd": str(BASE_DIR),
+        "restart_delay": 10,
+        "description": "WhatsApp Web monitor (requires browser)"
+    },
+    "orchestrator": {
+        "command": [sys.executable, "src/orchestrator.py"],
+        "cwd": str(BASE_DIR),
+        "restart_delay": 5,
+        "description": "Task orchestrator with Ralph Wiggum loop"
     }
 }
 

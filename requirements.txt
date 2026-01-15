@@ -9,6 +9,9 @@ google-api-python-client>=2.100.0
 # File watching
 watchdog>=3.0.0
 
+# Browser automation for WhatsApp
+playwright>=1.40.0
+
 # Environment management
 python-dotenv>=1.0.0
 
