@@ -59,3 +59,20 @@
 2026-01-15 21:38:22,344 - GmailWatcher - INFO - Credentials saved to D:\Hacathan_2\config\token.json
 2026-01-15 21:38:22,359 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
 2026-01-15 21:38:22,376 - GmailWatcher - INFO - Successfully authenticated with Gmail API
+2026-01-15 22:12:25,646 - GmailWatcher - INFO - ==================================================
+2026-01-15 22:12:25,647 - GmailWatcher - INFO - Gmail Watcher Starting...
+2026-01-15 22:12:25,648 - GmailWatcher - INFO - Vault Path: D:\Hacathan_2\Vault
+2026-01-15 22:12:25,648 - GmailWatcher - INFO - Poll Interval: 60 seconds
+2026-01-15 22:12:25,648 - GmailWatcher - INFO - Dry Run: False
+2026-01-15 22:12:25,648 - GmailWatcher - INFO - ==================================================
+2026-01-15 22:12:25,669 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-01-15 22:12:25,677 - GmailWatcher - INFO - Successfully authenticated with Gmail API
+2026-01-15 22:13:23,601 - GmailWatcher - INFO - ==================================================
+2026-01-15 22:13:23,601 - GmailWatcher - INFO - Gmail Watcher Starting...
+2026-01-15 22:13:23,602 - GmailWatcher - INFO - Vault Path: D:\Hacathan_2\Vault
+2026-01-15 22:13:23,602 - GmailWatcher - INFO - Poll Interval: 60 seconds
+2026-01-15 22:13:23,603 - GmailWatcher - INFO - Dry Run: False
+2026-01-15 22:13:23,603 - GmailWatcher - INFO - ==================================================
+2026-01-15 22:13:23,618 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-01-15 22:13:23,623 - GmailWatcher - INFO - Successfully authenticated with Gmail API
+2026-01-15 22:16:05,317 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
