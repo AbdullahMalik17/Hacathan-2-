@@ -41,3 +41,11 @@
 2026-01-15 17:43:02,216 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-15_17-43_gmail_medium_Build failed for fearless-strength.md
 2026-01-15 17:43:02,225 - GmailWatcher - INFO - Processing: Build failed for fearless-strength
 2026-01-15 17:43:02,226 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-15_17-43_gmail_medium_Build failed for fearless-strength.md
+2026-01-15 17:47:01,642 - GmailWatcher - INFO - ==================================================
+2026-01-15 17:47:01,643 - GmailWatcher - INFO - Gmail Watcher Starting...
+2026-01-15 17:47:01,643 - GmailWatcher - INFO - Vault Path: D:\Hacathan_2\Vault
+2026-01-15 17:47:01,643 - GmailWatcher - INFO - Poll Interval: 60 seconds
+2026-01-15 17:47:01,643 - GmailWatcher - INFO - Dry Run: False
+2026-01-15 17:47:01,643 - GmailWatcher - INFO - ==================================================
+2026-01-15 17:47:01,660 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-01-15 17:47:01,663 - GmailWatcher - INFO - Successfully authenticated with Gmail API
