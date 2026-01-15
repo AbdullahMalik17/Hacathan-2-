@@ -10,7 +10,10 @@
       "Bash(ls:*)",
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: add core Digital FTE components\n\n- Add Gmail watcher with OAuth2 authentication\n- Add orchestrator with Ralph Wiggum loop pattern\n- Add utility modules \\(file_manager, logger\\)\n- Implement priority detection from email keywords\n- Add audit logging for all actions\n\nComponents:\n- src/watchers/gmail_watcher.py: Monitors Gmail for new emails\n- src/orchestrator.py: Main processing loop with retry logic\n- src/utils/file_manager.py: Vault file operations\n- src/utils/logger.py: Structured audit logging\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git fetch:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File:*)",
+      "Bash(find:*)"
     ]
   }
 }

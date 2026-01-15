@@ -37,6 +37,7 @@ env/
 config/credentials.json
 config/token.json
 config/.env
+config/whatsapp_data/
 *.key
 *.pem
 *.secret
