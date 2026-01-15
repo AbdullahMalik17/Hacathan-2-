@@ -1,0 +1,43 @@
+2026-01-15 17:18:01,641 - GmailWatcher - INFO - ==================================================
+2026-01-15 17:18:01,641 - GmailWatcher - INFO - Gmail Watcher Starting...
+2026-01-15 17:18:01,641 - GmailWatcher - INFO - Vault Path: D:\Hacathan_2\Vault
+2026-01-15 17:18:01,652 - GmailWatcher - INFO - Poll Interval: 60 seconds
+2026-01-15 17:18:01,652 - GmailWatcher - INFO - Dry Run: False
+2026-01-15 17:18:01,652 - GmailWatcher - INFO - ==================================================
+2026-01-15 17:18:01,652 - GmailWatcher - INFO - Starting OAuth flow...
+2026-01-15 17:25:52,077 - GmailWatcher - INFO - Starting OAuth flow...
+2026-01-15 17:26:10,461 - google_auth_oauthlib.flow - INFO - "GET /?state=accQmvWEqokuuWuXWnpwRPCc1IgR4F&code=4/0ASc3gC0nISh9khVfro6BH49BTSgWJ8QcKR1aiLWaLmibO2EiWKOt3XJxNBlx3ytc33kwjg&scope=https://www.googleapis.com/auth/gmail.readonly HTTP/1.1" 200 65
+2026-01-15 17:26:11,212 - GmailWatcher - INFO - Credentials saved to D:\Hacathan_2\config\token.json
+2026-01-15 17:26:11,249 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-01-15 17:28:47,022 - GmailWatcher - INFO - ==================================================
+2026-01-15 17:28:47,022 - GmailWatcher - INFO - Gmail Watcher Starting...
+2026-01-15 17:28:47,023 - GmailWatcher - INFO - Vault Path: D:\Hacathan_2\Vault
+2026-01-15 17:28:47,023 - GmailWatcher - INFO - Poll Interval: 60 seconds
+2026-01-15 17:28:47,023 - GmailWatcher - INFO - Dry Run: False
+2026-01-15 17:28:47,023 - GmailWatcher - INFO - ==================================================
+2026-01-15 17:28:47,072 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-01-15 17:28:47,091 - GmailWatcher - INFO - Successfully authenticated with Gmail API
+2026-01-15 17:28:55,183 - GmailWatcher - INFO - Processing: Your Supabase Project AbdullahMalik17's Project is going to be paused.
+2026-01-15 17:28:55,186 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-15_17-28_gmail_medium_Your Supabase Project AbdullahMalik17s Project is .md
+2026-01-15 17:28:55,189 - GmailWatcher - INFO - Processing: Updates to how privacy settings work on Play
+2026-01-15 17:28:55,192 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-15_17-28_gmail_medium_Updates to how privacy settings work on Play.md
+2026-01-15 17:28:55,208 - GmailWatcher - INFO - Processing: PAK IDENTITY-Successful account registration
+2026-01-15 17:28:55,212 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-15_17-28_gmail_medium_PAK IDENTITY-Successful account registration.md
+2026-01-15 17:28:55,225 - GmailWatcher - INFO - Processing: Amna signed in on a new device
+2026-01-15 17:28:55,227 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-15_17-28_gmail_medium_Amna signed in on a new device.md
+2026-01-15 17:28:55,242 - GmailWatcher - INFO - Processing: Amna turned on Chrome Sync in Google Chrome
+2026-01-15 17:28:55,244 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-15_17-28_gmail_medium_Amna turned on Chrome Sync in Google Chrome.md
+2026-01-15 17:28:55,258 - GmailWatcher - INFO - Processing: Amna's Google Account has been set up
+2026-01-15 17:28:55,260 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-15_17-28_gmail_medium_Amnas Google Account has been set up.md
+2026-01-15 17:28:55,276 - GmailWatcher - INFO - Processing: You’re now open to work - we can help you get noticed
+2026-01-15 17:28:55,279 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-15_17-28_gmail_medium_Youre now open to work - we can help you get notic.md
+2026-01-15 17:28:55,291 - GmailWatcher - INFO - Processing: Build failed for fearless-strength
+2026-01-15 17:28:55,293 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-15_17-28_gmail_medium_Build failed for fearless-strength.md
+2026-01-15 17:28:55,308 - GmailWatcher - INFO - Processing: Build failed for fearless-strength
+2026-01-15 17:28:55,310 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-15_17-28_gmail_medium_Build failed for fearless-strength.md
+2026-01-15 17:28:55,325 - GmailWatcher - INFO - Processing: Build failed for fearless-strength
+2026-01-15 17:28:55,327 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-15_17-28_gmail_medium_Build failed for fearless-strength.md
+2026-01-15 17:43:02,189 - GmailWatcher - INFO - Processing: Build failed for fearless-strength
+2026-01-15 17:43:02,216 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-15_17-43_gmail_medium_Build failed for fearless-strength.md
+2026-01-15 17:43:02,225 - GmailWatcher - INFO - Processing: Build failed for fearless-strength
+2026-01-15 17:43:02,226 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-15_17-43_gmail_medium_Build failed for fearless-strength.md
