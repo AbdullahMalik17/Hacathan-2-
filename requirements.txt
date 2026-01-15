@@ -21,6 +21,10 @@ python-dateutil>=2.8.2
 # Process management (optional)
 psutil>=5.9.0
 
+# MCP Server
+fastmcp>=0.1.0
+jinja2>=3.1.0
+
 # Testing
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
