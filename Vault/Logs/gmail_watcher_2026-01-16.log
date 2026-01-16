@@ -1,0 +1,12 @@
+2026-01-16 10:03:52,439 - GmailWatcher - INFO - ==================================================
+2026-01-16 10:03:52,442 - GmailWatcher - INFO - Gmail Watcher Starting...
+2026-01-16 10:03:52,442 - GmailWatcher - INFO - Vault Path: D:\Hacathan_2\Vault
+2026-01-16 10:03:52,443 - GmailWatcher - INFO - Poll Interval: 60 seconds
+2026-01-16 10:03:52,443 - GmailWatcher - INFO - Dry Run: False
+2026-01-16 10:03:52,444 - GmailWatcher - INFO - ==================================================
+2026-01-16 10:03:52,495 - GmailWatcher - INFO - Refreshing expired credentials...
+2026-01-16 10:03:53,602 - GmailWatcher - INFO - Credentials saved to D:\Hacathan_2\config\token.json
+2026-01-16 10:03:53,613 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-01-16 10:03:53,656 - GmailWatcher - INFO - Successfully authenticated with Gmail API
+2026-01-16 10:19:00,553 - GmailWatcher - INFO - Processing: Ready for work, Muhammad Abdullah? Here’s how to win clients in 2026
+2026-01-16 10:19:00,553 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-16_10-19_gmail_high_Ready for work Muhammad Abdullah Heres how to win .md

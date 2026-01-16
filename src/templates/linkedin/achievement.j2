@@ -1,0 +1,26 @@
+{{ emoji|default('🎉') }} {{ headline }}
+
+{{ description }}
+
+{% if metrics %}
+Key Results:
+{% for metric in metrics %}
+✓ {{ metric }}
+{% endfor %}
+{% endif %}
+
+{% if lesson %}
+Key Takeaway: {{ lesson }}
+{% endif %}
+
+{% if cta %}
+{{ cta }}
+{% else %}
+What milestones are you working towards?
+{% endif %}
+
+{% if hashtags %}
+{{ hashtags|join(' ') }}
+{% else %}
+#Achievement #Milestone #Growth #Progress #Success
+{% endif %}

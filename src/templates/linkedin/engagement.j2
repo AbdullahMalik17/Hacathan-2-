@@ -1,0 +1,25 @@
+{{ hook|default("Here's something I've been thinking about:") }}
+
+{{ question }}
+
+{% if context %}
+Context: {{ context }}
+{% endif %}
+
+{% if options %}
+{% for option in options %}
+{{ loop.index }}. {{ option }}
+{% endfor %}
+{% endif %}
+
+{% if my_take %}
+My take: {{ my_take }}
+{% endif %}
+
+I'd love to hear your thoughts in the comments!
+
+{% if hashtags %}
+{{ hashtags|join(' ') }}
+{% else %}
+#Discussion #Community #Thoughts #Perspective
+{% endif %}
