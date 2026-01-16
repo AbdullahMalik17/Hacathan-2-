@@ -8,13 +8,13 @@ def main():
     fetch_script = os.path.join(skill_dir, "scripts", "fetch-docs.sh")
 
     if os.path.isfile(fetch_script) and os.access(fetch_script, os.X_OK):
-        print("✓ fetch-docs.sh ready")
+        print("[OK] fetch-docs.sh ready")
         sys.exit(0)
     elif os.path.isfile(fetch_script):
-        print("✗ fetch-docs.sh not executable. Run: chmod +x scripts/fetch-docs.sh")
+        print("[FAIL] fetch-docs.sh not executable. Run: chmod +x scripts/fetch-docs.sh")
         sys.exit(1)
     else:
-        print("✗ fetch-docs.sh missing. Check skill installation.")
+        print("[FAIL] fetch-docs.sh missing. Check skill installation.")
         sys.exit(1)
 
 if __name__ == "__main__":

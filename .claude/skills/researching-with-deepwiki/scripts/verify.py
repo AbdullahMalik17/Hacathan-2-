@@ -24,7 +24,7 @@ def main():
                 if "deepwiki" in mcp_servers:
                     url = mcp_servers["deepwiki"].get("url", "")
                     if "deepwiki" in url or "devin.ai" in url:
-                        print("✓ DeepWiki MCP server configured")
+                        print("[OK] DeepWiki MCP server configured")
                         sys.exit(0)
             except (json.JSONDecodeError, KeyError):
                 continue
@@ -34,10 +34,10 @@ def main():
     skill_md = os.path.join(skill_dir, "SKILL.md")
 
     if os.path.isfile(skill_md):
-        print("✓ researching-with-deepwiki skill ready (configure MCP for full use)")
+        print("[OK] researching-with-deepwiki skill ready (configure MCP for full use)")
         sys.exit(0)
 
-    print("✗ SKILL.md missing")
+    print("[FAIL] SKILL.md missing")
     sys.exit(1)
 
 if __name__ == "__main__":

@@ -11,10 +11,10 @@ def main():
     )
 
     if result.returncode == 0:
-        print("✓ Playwright MCP server running")
+        print("[OK] Playwright MCP server running")
         sys.exit(0)
     else:
-        print("✗ Server not running. Run: bash scripts/start-server.sh")
+        print("[FAIL] Server not running. Run: bash scripts/start-server.sh")
         sys.exit(1)
 
 if __name__ == "__main__":

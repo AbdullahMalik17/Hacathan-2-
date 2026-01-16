@@ -11,10 +11,10 @@ def main():
     missing = [r for r in required if not os.path.isfile(os.path.join(refs_dir, r))]
 
     if not missing:
-        print("✓ building-nextjs-apps skill ready")
+        print("[OK] building-nextjs-apps skill ready")
         sys.exit(0)
     else:
-        print(f"✗ Missing: {', '.join(missing)}")
+        print(f"[FAIL] Missing: {', '.join(missing)}")
         sys.exit(1)
 
 if __name__ == "__main__":

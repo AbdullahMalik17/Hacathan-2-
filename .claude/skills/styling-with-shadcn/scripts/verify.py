@@ -8,10 +8,10 @@ def main():
     refs_dir = os.path.join(skill_dir, "references")
 
     if os.path.isdir(refs_dir) and os.path.isfile(os.path.join(refs_dir, "component-examples.md")):
-        print("✓ styling-with-shadcn skill ready")
+        print("[OK] styling-with-shadcn skill ready")
         sys.exit(0)
     else:
-        print("✗ Missing references/component-examples.md")
+        print("[FAIL] Missing references/component-examples.md")
         sys.exit(1)
 
 if __name__ == "__main__":

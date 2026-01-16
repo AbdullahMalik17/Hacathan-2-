@@ -15,10 +15,10 @@ def main():
     missing = [f for f in required if not os.path.exists(os.path.join(skill_dir, f))]
 
     if missing:
-        print(f"✗ Missing: {', '.join(missing)}")
+        print(f"[FAIL] Missing: {', '.join(missing)}")
         sys.exit(1)
 
-    print("✓ building-rag-systems skill ready")
+    print("[OK] building-rag-systems skill ready")
     sys.exit(0)
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ def main():
     skill_md = skill_dir / "SKILL.md"
 
     if not skill_md.exists():
-        print("✗ SKILL.md not found")
+        print("[FAIL] SKILL.md not found")
         sys.exit(1)
 
     content = skill_md.read_text()
@@ -19,24 +19,24 @@ def main():
     missing = [r for r in required if r not in content]
 
     if missing:
-        print(f"✗ Missing sections: {missing}")
+        print(f"[FAIL] Missing sections: {missing}")
         sys.exit(1)
 
     # Check frontmatter
     if "scaffolding-openai-agents" not in content:
-        print("✗ Invalid skill name in frontmatter")
+        print("[FAIL] Invalid skill name in frontmatter")
         sys.exit(1)
 
     if "Use when" not in content:
-        print("✗ Missing 'Use when' trigger in description")
+        print("[FAIL] Missing 'Use when' trigger in description")
         sys.exit(1)
 
     # Check for async patterns
     if "asyncio" not in content or "await" not in content:
-        print("✗ Missing async/await patterns")
+        print("[FAIL] Missing async/await patterns")
         sys.exit(1)
 
-    print("✓ scaffolding-openai-agents skill ready")
+    print("[OK] scaffolding-openai-agents skill ready")
     sys.exit(0)
 
 
