@@ -1,0 +1,27 @@
+Weekly AI Automation Update
+
+This week, my Digital FTE (AI Employee) processed:
+
+{% if by_source %}
+{% for source, count in by_source.items() %}
+{% if source == 'Gmail' %}📧{% elif source == 'WhatsApp' %}💬{% elif source == 'Filesystem' %}📁{% else %}🤖{% endif %} {{ count }} {{ source }} activities
+{% endfor %}
+{% endif %}
+
+{% if total_activities %}
+Total: {{ total_activities }} automated tasks in {{ period_days|default(7) }} days
+{% set hours_saved = (total_activities * 2 / 60)|round(1) %}
+Estimated time saved: ~{{ hours_saved }} hours
+{% endif %}
+
+{% if status == 'healthy' %}
+System Status: All services running smoothly
+{% elif status == 'degraded' %}
+System Status: Some services need attention
+{% endif %}
+
+The future of work is here - AI handling the mundane so we can focus on what matters.
+
+What tasks would you automate first?
+
+#AIAutomation #Productivity #DigitalTransformation #FutureOfWork #AI

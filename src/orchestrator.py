@@ -32,6 +32,7 @@ APPROVED_PATH = VAULT_PATH / "Approved"
 DONE_PATH = VAULT_PATH / "Done"
 LOGS_PATH = VAULT_PATH / "Logs"
 CONFIG_PATH = PROJECT_ROOT / "config"
+LINKEDIN_QUEUE_PATH = VAULT_PATH / "LinkedIn_Queue"
 
 # Default settings
 DEFAULT_MAX_ITERATIONS = 10
@@ -78,7 +79,7 @@ class DigitalFTEOrchestrator:
     def _ensure_directories(self):
         """Ensure all required directories exist."""
         for path in [NEEDS_ACTION_PATH, PENDING_APPROVAL_PATH,
-                     APPROVED_PATH, DONE_PATH, LOGS_PATH]:
+                     APPROVED_PATH, DONE_PATH, LOGS_PATH, LINKEDIN_QUEUE_PATH]:
             path.mkdir(parents=True, exist_ok=True)
 
     def _load_handbook(self) -> str:
@@ -296,6 +297,11 @@ Remember: Follow the handbook rules strictly. When in doubt, request human appro
         approved_tasks = self.get_approved_tasks()
 
         for task_path in approved_tasks:
+            # Check if this is a LinkedIn post
+            if task_path.name.startswith("LinkedIn_"):
+                self._process_approved_linkedin_post(task_path)
+                continue
+
             logger.info(f"Processing approved task: {task_path.name}")
 
             # Build execution prompt
@@ -315,6 +321,70 @@ Execute the approved action and move the file to Vault/Done/ when complete.
                     "task": task_path.name,
                     "result": "success"
                 })
+
+    def _process_approved_linkedin_post(self, task_path: Path):
+        """Process an approved LinkedIn post."""
+        logger.info(f"Processing approved LinkedIn post: {task_path.name}")
+
+        if self.dry_run:
+            logger.info(f"[DRY RUN] Would post to LinkedIn: {task_path.name}")
+            return
+
+        try:
+            # Import LinkedIn poster
+            from linkedin.linkedin_poster import LinkedInPoster
+            import asyncio
+
+            async def post_to_linkedin():
+                poster = LinkedInPoster()
+                await poster.start()
+                try:
+                    count = await poster.process_approved_posts()
+                    return count
+                finally:
+                    await poster.stop()
+
+            # Run async LinkedIn posting
+            count = asyncio.run(post_to_linkedin())
+
+            self._log_action("linkedin_post_executed", {
+                "task": task_path.name,
+                "posts_published": count,
+                "result": "success"
+            })
+
+        except ImportError as e:
+            logger.error(f"LinkedIn module not available: {e}")
+            self._log_action("linkedin_post_failed", {
+                "task": task_path.name,
+                "error": "module_not_found"
+            })
+        except Exception as e:
+            logger.error(f"Error posting to LinkedIn: {e}")
+            self._log_action("linkedin_post_failed", {
+                "task": task_path.name,
+                "error": str(e)
+            })
+
+    def process_linkedin_queue(self):
+        """Process LinkedIn queue and generate content."""
+        try:
+            from linkedin.content_generator import ContentGenerator
+
+            generator = ContentGenerator()
+
+            # Process manual posts from queue
+            queue_count = generator.process_queue()
+            if queue_count > 0:
+                logger.info(f"Processed {queue_count} LinkedIn queue items")
+                self._log_action("linkedin_queue_processed", {
+                    "items": queue_count
+                })
+
+        except ImportError:
+            logger.debug("LinkedIn module not available, skipping queue processing")
+        except Exception as e:
+            logger.error(f"Error processing LinkedIn queue: {e}")
 
     def _log_action(self, action: str, details: Dict[str, Any]):
         """Log action to daily log file."""
@@ -352,7 +422,10 @@ Execute the approved action and move the file to Vault/Done/ when complete.
                     if task_path.name not in self.processed_tasks:
                         self.process_task(task_path)
 
-                # Process approved tasks
+                # Process LinkedIn queue
+                self.process_linkedin_queue()
+
+                # Process approved tasks (including LinkedIn posts)
                 self.process_approved_tasks()
 
                 # Sleep before next poll
@@ -409,6 +482,7 @@ def main():
         pending = orchestrator.get_pending_tasks()
         for task in pending:
             orchestrator.process_task(task)
+        orchestrator.process_linkedin_queue()
         orchestrator.process_approved_tasks()
     else:
         # Run continuous loop

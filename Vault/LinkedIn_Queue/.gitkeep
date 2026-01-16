@@ -1,0 +1,25 @@
+# LinkedIn Post Queue
+
+Place markdown files here to queue posts for LinkedIn.
+
+## File Format
+
+```markdown
+---
+type: linkedin_post
+scheduled: 2026-01-17T09:00:00  # Optional: schedule time
+media: []                        # Optional: list of image paths
+---
+
+Your post content here...
+
+#hashtag1 #hashtag2
+```
+
+## Workflow
+
+1. Create post file in this folder
+2. Orchestrator moves to Pending_Approval/
+3. Human reviews and approves
+4. LinkedIn Poster publishes approved posts
+5. Files move to Done/
