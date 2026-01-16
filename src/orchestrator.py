@@ -37,7 +37,94 @@ LINKEDIN_QUEUE_PATH = VAULT_PATH / "LinkedIn_Queue"
 # Default settings
 DEFAULT_MAX_ITERATIONS = 10
 DEFAULT_POLL_INTERVAL = 30  # seconds
-CLAUDE_COMMAND = "claude"   # Claude Code CLI command
+
+# Multi-agent fallback configuration
+# Order: Claude (default) -> Gemini -> Qwen -> Copilot -> OpenCode
+AI_AGENTS = [
+    {
+        "name": "claude",
+        "commands": [
+            "claude",
+            "claude.cmd",
+            os.path.expandvars(r"%APPDATA%\npm\claude.cmd"),
+        ],
+        "prompt_flag": "-p",
+        "enabled": True
+    },
+    {
+        "name": "gemini",
+        "commands": [
+            "gemini",
+            "gemini.cmd",
+            os.path.expandvars(r"%APPDATA%\npm\gemini.cmd"),
+        ],
+        "prompt_flag": "-p",
+        "enabled": True
+    },
+    {
+        "name": "qwen",
+        "commands": [
+            "qwen",
+            "qwen.cmd",
+            os.path.expandvars(r"%APPDATA%\npm\qwen.cmd"),
+        ],
+        "prompt_flag": "-p",
+        "enabled": True
+    },
+    {
+        "name": "copilot",
+        "commands": [
+            "github-copilot-cli",
+            "copilot",
+            "copilot.cmd",
+        ],
+        "prompt_flag": "",  # Copilot may use different syntax
+        "enabled": True
+    },
+    {
+        "name": "opencode",
+        "commands": [
+            "opencode",
+            "opencode.cmd",
+            "aider",  # Alternative open-source coding assistant
+            "aider.cmd",
+        ],
+        "prompt_flag": "--message",
+        "enabled": True
+    }
+]
+
+
+def find_available_agents():
+    """Find all available AI agents on the system."""
+    import shutil
+    available = []
+
+    for agent in AI_AGENTS:
+        if not agent["enabled"]:
+            continue
+
+        for cmd in agent["commands"]:
+            cmd_path = shutil.which(cmd)
+            if cmd_path:
+                available.append({
+                    "name": agent["name"],
+                    "command": cmd_path,
+                    "prompt_flag": agent["prompt_flag"]
+                })
+                break
+            elif os.path.exists(cmd):
+                available.append({
+                    "name": agent["name"],
+                    "command": cmd,
+                    "prompt_flag": agent["prompt_flag"]
+                })
+                break
+
+    return available
+
+
+AVAILABLE_AGENTS = find_available_agents()
 
 # Setup logging
 logging.basicConfig(
@@ -74,6 +161,14 @@ class DigitalFTEOrchestrator:
         logger.info(f"  Max Iterations: {max_iterations}")
         logger.info(f"  Poll Interval: {poll_interval}s")
         logger.info(f"  Dry Run: {dry_run}")
+
+        # Log available AI agents
+        if AVAILABLE_AGENTS:
+            agent_names = [a["name"] for a in AVAILABLE_AGENTS]
+            logger.info(f"  AI Agents: {', '.join(agent_names)} (fallback order)")
+        else:
+            logger.warning("  AI Agents: NONE FOUND - install claude, gemini, qwen, copilot, or aider")
+
         logger.info("=" * 60)
 
     def _ensure_directories(self):
@@ -188,46 +283,84 @@ Remember: Follow the handbook rules strictly. When in doubt, request human appro
 """
         return prompt
 
-    def invoke_claude(self, prompt: str, task_path: Path) -> bool:
-        """Invoke Claude Code with the given prompt."""
+    def invoke_agent(self, prompt: str, task_path: Path, agent: dict = None) -> tuple[bool, str]:
+        """
+        Invoke an AI agent with the given prompt.
+
+        Args:
+            prompt: The prompt to send to the agent
+            task_path: Path to the task file
+            agent: Specific agent to use (optional, uses fallback if None)
+
+        Returns:
+            Tuple of (success: bool, agent_name: str)
+        """
         if self.dry_run:
-            logger.info(f"[DRY RUN] Would invoke Claude with prompt for: {task_path.name}")
-            logger.debug(f"Prompt preview: {prompt[:200]}...")
-            return True
+            logger.info(f"[DRY RUN] Would invoke AI agent with prompt for: {task_path.name}")
+            return True, "dry_run"
 
-        try:
-            # Write prompt to temp file
-            prompt_file = CONFIG_PATH / "current_prompt.txt"
-            prompt_file.write_text(prompt, encoding='utf-8')
+        # Write prompt to temp file
+        prompt_file = CONFIG_PATH / "current_prompt.txt"
+        prompt_file.write_text(prompt, encoding='utf-8')
 
-            # Invoke Claude Code
-            logger.info(f"Invoking Claude Code for task: {task_path.name}")
+        # Get list of agents to try
+        agents_to_try = [agent] if agent else AVAILABLE_AGENTS
 
-            result = subprocess.run(
-                [CLAUDE_COMMAND, "-p", prompt],
-                capture_output=True,
-                text=True,
-                timeout=300,  # 5 minute timeout
-                cwd=str(PROJECT_ROOT)
-            )
+        if not agents_to_try:
+            logger.error("No AI agents available! Install one of: claude, gemini, qwen, copilot, opencode/aider")
+            return False, "none"
 
-            if result.returncode == 0:
-                logger.info("Claude Code completed successfully")
-                logger.debug(f"Output: {result.stdout[:500]}")
-                return True
-            else:
-                logger.error(f"Claude Code failed: {result.stderr}")
-                return False
+        for ai_agent in agents_to_try:
+            agent_name = ai_agent["name"]
+            command = ai_agent["command"]
+            prompt_flag = ai_agent["prompt_flag"]
 
-        except subprocess.TimeoutExpired:
-            logger.error("Claude Code timed out")
-            return False
-        except FileNotFoundError:
-            logger.error(f"Claude Code CLI not found. Ensure '{CLAUDE_COMMAND}' is installed and in PATH")
-            return False
-        except Exception as e:
-            logger.error(f"Error invoking Claude: {e}")
-            return False
+            try:
+                logger.info(f"Trying {agent_name.upper()} for task: {task_path.name}")
+
+                # Build command
+                if prompt_flag:
+                    cmd = [command, prompt_flag, prompt]
+                else:
+                    cmd = [command, prompt]
+
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=300,  # 5 minute timeout
+                    cwd=str(PROJECT_ROOT),
+                    shell=(os.name == 'nt')  # Use shell on Windows
+                )
+
+                if result.returncode == 0:
+                    logger.info(f"{agent_name.upper()} completed successfully")
+                    logger.debug(f"Output: {result.stdout[:500]}")
+                    self._log_action("agent_success", {
+                        "agent": agent_name,
+                        "task": task_path.name
+                    })
+                    return True, agent_name
+                else:
+                    logger.warning(f"{agent_name.upper()} failed: {result.stderr[:200]}")
+                    # Try next agent
+
+            except subprocess.TimeoutExpired:
+                logger.warning(f"{agent_name.upper()} timed out, trying next agent...")
+            except FileNotFoundError:
+                logger.warning(f"{agent_name.upper()} not found, trying next agent...")
+            except Exception as e:
+                logger.warning(f"{agent_name.upper()} error: {e}, trying next agent...")
+
+        # All agents failed
+        logger.error("All AI agents failed to process the task")
+        self._log_action("all_agents_failed", {"task": task_path.name})
+        return False, "all_failed"
+
+    def invoke_claude(self, prompt: str, task_path: Path) -> bool:
+        """Invoke AI agent with fallback (backward compatible method)."""
+        success, agent_name = self.invoke_agent(prompt, task_path)
+        return success
 
     def process_task(self, task_path: Path) -> bool:
         """Process a single task through the Ralph Wiggum loop."""

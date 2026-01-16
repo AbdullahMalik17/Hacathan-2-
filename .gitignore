@@ -73,3 +73,4 @@ coverage.xml
 
 # Serena
 .serena/memories/
+config/linkedin_data/
