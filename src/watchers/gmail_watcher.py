@@ -54,13 +54,12 @@ PRIORITY_KEYWORDS = {
     "low": ["newsletter", "notification", "subscription", "digest", "weekly"]
 }
 
-# Setup logging
+# Setup logging (initially just console, file handler added in main())
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(LOGS_PATH / f"gmail_watcher_{datetime.now().strftime('%Y-%m-%d')}.log")
+        logging.StreamHandler()
     ]
 )
 logger = logging.getLogger("GmailWatcher")
@@ -322,6 +321,16 @@ def main():
     logger.info("=" * 50)
 
     ensure_directories()
+
+    # Add file handler after directories are created
+    try:
+        log_file = LOGS_PATH / f"gmail_watcher_{datetime.now().strftime('%Y-%m-%d')}.log"
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        logger.addHandler(file_handler)
+        logger.info(f"Logging to file: {log_file}")
+    except Exception as e:
+        logger.warning(f"Could not create log file: {e}")
 
     try:
         service = get_gmail_service()
