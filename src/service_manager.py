@@ -23,34 +23,79 @@ logging.basicConfig(
 logger = logging.getLogger("ServiceManager")
 
 SERVICES = {
-    "gmail_watcher": {
-        "command": [sys.executable, "src/watchers/gmail_watcher.py"],
+    "watching-gmail": {
+        "command": [sys.executable, ".claude/skills/watching-gmail/scripts/run.py"],
         "cwd": str(BASE_DIR),
         "restart_delay": 5,
-        "description": "Gmail inbox monitor"
+        "description": "Gmail inbox monitor (Skill)"
     },
-    "filesystem_watcher": {
-        "command": [sys.executable, "src/watchers/filesystem_watcher.py"],
+    "watching-filesystem": {
+        "command": [sys.executable, ".claude/skills/watching-filesystem/scripts/run.py"],
         "cwd": str(BASE_DIR),
         "restart_delay": 5,
-        "description": "Filesystem drop folder monitor"
+        "description": "Filesystem drop folder monitor (Skill)"
     },
-    "whatsapp_watcher": {
-        "command": [sys.executable, "src/watchers/whatsapp_watcher.py"],
+    "watching-whatsapp": {
+        "command": [sys.executable, ".claude/skills/watching-whatsapp/scripts/run.py"],
         "cwd": str(BASE_DIR),
         "restart_delay": 10,
-        "description": "WhatsApp Web monitor (requires browser)"
+        "description": "WhatsApp Web monitor (Skill, requires browser)"
     },
-    "orchestrator": {
-        "command": [sys.executable, "src/orchestrator.py"],
+    "digital-fte-orchestrator": {
+        "command": [sys.executable, ".claude/skills/digital-fte-orchestrator/scripts/run.py"],
         "cwd": str(BASE_DIR),
         "restart_delay": 5,
-        "description": "Task orchestrator with Ralph Wiggum loop"
+        "description": "Task orchestrator with Ralph Wiggum loop (Skill)"
     }
 }
 
 processes = {}
 running = True
+
+def verify_skill(name):
+    """Verify skill is properly configured before starting."""
+    config = SERVICES[name]
+    skill_path = Path(config["command"][1])
+
+    # Check if skill script exists
+    if not skill_path.exists():
+        logger.error(f"Skill script not found: {skill_path}")
+        return False
+
+    # Check if verify.py exists and run it
+    verify_script = skill_path.parent / "verify.py"
+    if verify_script.exists():
+        try:
+            result = subprocess.run(
+                [sys.executable, str(verify_script)],
+                cwd=str(BASE_DIR),
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            if result.returncode != 0:
+                logger.warning(f"Skill {name} verification failed: {result.stdout}")
+                return False
+            logger.info(f"Skill {name} verified successfully")
+        except Exception as e:
+            logger.warning(f"Could not verify skill {name}: {e}")
+            # Don't fail on verification error, just warn
+
+    return True
+
+def get_service_status():
+    """Get status of all services."""
+    status = {}
+    for name in SERVICES:
+        if name in processes:
+            p = processes[name]
+            if p.poll() is None:
+                status[name] = "running"
+            else:
+                status[name] = f"exited (code {p.poll()})"
+        else:
+            status[name] = "not started"
+    return status
 
 def log_event(event_type, service_name, status, details=""):
     """Write event to the markdown startup log."""
@@ -79,9 +124,15 @@ def start_service(name):
     if name in processes and processes[name].poll() is None:
         return # Already running
 
+    # Verify skill before starting
+    if not verify_skill(name):
+        logger.error(f"Skill verification failed for {name}, skipping startup")
+        log_event("STARTUP", name, "FAILED", "Skill verification failed")
+        return
+
     config = SERVICES[name]
     logger.info(f"Starting service: {name}")
-    
+
     try:
         # Start the process
         # We redirect stderr to stdout to capture all output
@@ -154,13 +205,60 @@ def monitor_loop():
         time.sleep(1)
 
 if __name__ == "__main__":
-    # Register signal handlers
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Digital FTE Service Manager")
+    parser.add_argument("--status", action="store_true", help="Show status of all services")
+    parser.add_argument("--start-all", action="store_true", help="Start all services and monitor")
+    parser.add_argument("--start", type=str, help="Start a specific service")
+    parser.add_argument("--stop", type=str, help="Stop a specific service")
+
+    args = parser.parse_args()
+
+    # Handle status command
+    if args.status:
+        logger.info("=== Service Status ===")
+        for name, service_status in get_service_status().items():
+            config = SERVICES[name]
+            logger.info(f"{name}: {service_status} - {config['description']}")
+        sys.exit(0)
+
+    # Handle single service start
+    if args.start:
+        if args.start not in SERVICES:
+            logger.error(f"Unknown service: {args.start}")
+            logger.info(f"Available services: {', '.join(SERVICES.keys())}")
+            sys.exit(1)
+        start_service(args.start)
+        logger.info(f"Started {args.start}")
+        sys.exit(0)
+
+    # Handle single service stop
+    if args.stop:
+        if args.stop not in processes:
+            logger.error(f"Service not running: {args.stop}")
+            sys.exit(1)
+        p = processes[args.stop]
+        if p.poll() is None:
+            p.terminate()
+            p.wait(timeout=5)
+            logger.info(f"Stopped {args.stop}")
+        sys.exit(0)
+
+    # Default: Start all services and monitor
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    logger.info("Service Manager starting up...")
+    logger.info("=" * 60)
+    logger.info("Digital FTE Service Manager (Skill-Based Architecture)")
+    logger.info("=" * 60)
+    logger.info(f"Managing {len(SERVICES)} services:")
+    for name, config in SERVICES.items():
+        logger.info(f"  - {name}: {config['description']}")
+    logger.info("=" * 60)
+
     log_event("SYSTEM", "ServiceManager", "STARTED", "Manager initialization")
-    
+
     try:
         monitor_loop()
     except KeyboardInterrupt:
