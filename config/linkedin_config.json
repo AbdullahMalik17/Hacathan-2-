@@ -1,0 +1,58 @@
+{
+  "posting_schedule": {
+    "days": ["Monday", "Wednesday", "Friday"],
+    "preferred_times": ["09:00", "15:00"],
+    "timezone": "UTC"
+  },
+  "rate_limits": {
+    "max_per_day": 2,
+    "max_per_hour": 1,
+    "min_interval_minutes": 30
+  },
+  "approval_required": true,
+  "auto_generate_from_briefing": true,
+  "default_hashtags": [
+    "AIAutomation",
+    "Productivity",
+    "DigitalTransformation",
+    "AI",
+    "Automation"
+  ],
+  "content_preferences": {
+    "max_length": 3000,
+    "include_emoji": true,
+    "professional_tone": true,
+    "include_call_to_action": false
+  },
+  "post_types": {
+    "weekly_update": {
+      "enabled": true,
+      "template": "weekly_update.j2",
+      "frequency": "weekly",
+      "day": "Monday"
+    },
+    "achievement": {
+      "enabled": true,
+      "template": "achievement.j2",
+      "trigger": "manual"
+    },
+    "engagement": {
+      "enabled": true,
+      "template": "engagement.j2",
+      "frequency": "biweekly",
+      "day": "Wednesday"
+    }
+  },
+  "media_settings": {
+    "allow_images": true,
+    "allow_videos": false,
+    "max_images": 4,
+    "image_formats": ["jpg", "jpeg", "png"],
+    "max_file_size_mb": 5
+  },
+  "error_handling": {
+    "max_retries": 3,
+    "retry_delay_seconds": 60,
+    "notify_on_failure": true
+  }
+}
