@@ -1,17 +1,3 @@
-"""
-Digital FTE Orchestrator - The Ralph Wiggum Loop
-
-This orchestrator continuously monitors the vault for tasks and
-uses Claude Code to process them. The "Ralph Wiggum" pattern
-prevents lazy agent behavior by re-injecting the prompt if
-tasks aren't completed.
-
-Usage:
-    python orchestrator.py                    # Normal mode
-    python orchestrator.py --dry-run          # Test without executing
-    python orchestrator.py --max-iterations 5 # Limit iterations
-"""
-
 import os
 import sys
 import json
@@ -19,6 +5,8 @@ import time
 import subprocess
 import argparse
 import logging
+import shutil
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any
@@ -35,28 +23,27 @@ CONFIG_PATH = PROJECT_ROOT / "config"
 LINKEDIN_QUEUE_PATH = VAULT_PATH / "LinkedIn_Queue"
 
 # Default settings
-DEFAULT_MAX_ITERATIONS = 10
-DEFAULT_POLL_INTERVAL = 30  # seconds
+DEFAULT_MAX_ITERATIONS = 5
+DEFAULT_POLL_INTERVAL = 10
 
 # Multi-agent fallback configuration
-# Order: Claude (default) -> Gemini -> Qwen -> Copilot -> OpenCode
 AI_AGENTS = [
-    {
-        "name": "claude",
-        "commands": [
-            "claude",
-            "claude.cmd",
-            os.path.expandvars(r"%APPDATA%\npm\claude.cmd"),
-        ],
-        "prompt_flag": "-p",
-        "enabled": True
-    },
     {
         "name": "gemini",
         "commands": [
             "gemini",
             "gemini.cmd",
-            os.path.expandvars(r"%APPDATA%\npm\gemini.cmd"),
+            os.path.expandvars(r"%APPDATA%\\npm\\gemini.cmd"),
+        ],
+        "prompt_flag": "",
+        "enabled": True
+    },
+    {
+        "name": "claude",
+        "commands": [
+            "claude",
+            "claude.cmd",
+            os.path.expandvars(r"%APPDATA%\\npm\\claude.cmd"),
         ],
         "prompt_flag": "-p",
         "enabled": True
@@ -66,7 +53,7 @@ AI_AGENTS = [
         "commands": [
             "qwen",
             "qwen.cmd",
-            os.path.expandvars(r"%APPDATA%\npm\qwen.cmd"),
+            os.path.expandvars(r"%APPDATA%\\npm\\qwen.cmd"),
         ],
         "prompt_flag": "-p",
         "enabled": True
@@ -78,53 +65,10 @@ AI_AGENTS = [
             "copilot",
             "copilot.cmd",
         ],
-        "prompt_flag": "",  # Copilot may use different syntax
-        "enabled": True
-    },
-    {
-        "name": "opencode",
-        "commands": [
-            "opencode",
-            "opencode.cmd",
-            "aider",  # Alternative open-source coding assistant
-            "aider.cmd",
-        ],
-        "prompt_flag": "--message",
+        "prompt_flag": "-p",
         "enabled": True
     }
 ]
-
-
-def find_available_agents():
-    """Find all available AI agents on the system."""
-    import shutil
-    available = []
-
-    for agent in AI_AGENTS:
-        if not agent["enabled"]:
-            continue
-
-        for cmd in agent["commands"]:
-            cmd_path = shutil.which(cmd)
-            if cmd_path:
-                available.append({
-                    "name": agent["name"],
-                    "command": cmd_path,
-                    "prompt_flag": agent["prompt_flag"]
-                })
-                break
-            elif os.path.exists(cmd):
-                available.append({
-                    "name": agent["name"],
-                    "command": cmd,
-                    "prompt_flag": agent["prompt_flag"]
-                })
-                break
-
-    return available
-
-
-AVAILABLE_AGENTS = find_available_agents()
 
 # Setup logging
 logging.basicConfig(
@@ -148,6 +92,9 @@ class DigitalFTEOrchestrator:
         self.dry_run = dry_run
         self.iteration_count = 0
         self.processed_tasks = set()
+        
+        # Verify agents
+        self.available_agents = self._find_available_agents()
 
         # Ensure directories exist
         self._ensure_directories()
@@ -156,20 +103,45 @@ class DigitalFTEOrchestrator:
         self.handbook = self._load_handbook()
 
         logger.info("=" * 60)
-        logger.info("Digital FTE Orchestrator Initialized")
+        logger.info("Digital FTE Orchestrator Initialized (Supervisor Mode)")
         logger.info(f"  Vault Path: {VAULT_PATH}")
-        logger.info(f"  Max Iterations: {max_iterations}")
         logger.info(f"  Poll Interval: {poll_interval}s")
         logger.info(f"  Dry Run: {dry_run}")
-
-        # Log available AI agents
-        if AVAILABLE_AGENTS:
-            agent_names = [a["name"] for a in AVAILABLE_AGENTS]
-            logger.info(f"  AI Agents: {', '.join(agent_names)} (fallback order)")
+        
+        if self.available_agents:
+            names = [a['name'] for a in self.available_agents]
+            logger.info(f"  Active Agents: {', '.join(names)}")
         else:
-            logger.warning("  AI Agents: NONE FOUND - install claude, gemini, qwen, copilot, or aider")
+            logger.critical("  NO AGENTS FOUND! System cannot function.")
 
         logger.info("=" * 60)
+
+    def _find_available_agents(self):
+        """Find all available AI agents on the system."""
+        import shutil
+        available = []
+
+        for agent in AI_AGENTS:
+            if not agent["enabled"]:
+                continue
+
+            for cmd in agent["commands"]:
+                cmd_path = shutil.which(cmd)
+                if cmd_path:
+                    available.append({
+                        "name": agent["name"],
+                        "command": cmd_path,
+                        "prompt_flag": agent["prompt_flag"]
+                    })
+                    break
+                elif os.path.exists(cmd):
+                    available.append({
+                        "name": agent["name"],
+                        "command": cmd,
+                        "prompt_flag": agent["prompt_flag"]
+                    })
+                    break
+        return available
 
     def _ensure_directories(self):
         """Ensure all required directories exist."""
@@ -198,429 +170,263 @@ class DigitalFTEOrchestrator:
             tasks = list(APPROVED_PATH.glob("*.md"))
         return sorted(tasks, key=lambda x: x.stat().st_mtime)
 
-    def create_plan_file(self, task_path: Path) -> Path:
-        """Create a Plan.md file for a task."""
-        task_content = task_path.read_text(encoding='utf-8')
-        task_name = task_path.stem
-
-        plan_content = f"""# Plan: {task_name}
-
-## Task Reference
-- **Source File:** {task_path.name}
-- **Created:** {datetime.now().isoformat()}
-- **Status:** Planning
-
----
-
-## Original Task
-{task_content[:500]}{"..." if len(task_content) > 500 else ""}
-
----
-
-## Analysis
-_Claude Code will fill this section_
-
----
-
-## Execution Steps
-- [ ] Step 1: Analyze the task
-- [ ] Step 2: Determine required actions
-- [ ] Step 3: Check against Company Handbook rules
-- [ ] Step 4: Execute or request approval
-- [ ] Step 5: Log results and move to Done
-
----
-
-## Approval Required
-- [ ] No - Auto-approve based on handbook rules
-- [ ] Yes - Requires human approval
-
----
-
-## Notes
-_Additional context and decisions_
-
-"""
-
-        plan_path = task_path.parent / f"Plan_{task_name}.md"
-        plan_path.write_text(plan_content, encoding='utf-8')
-        return plan_path
-
-    def build_claude_prompt(self, task_path: Path) -> str:
-        """Build the prompt for Claude Code."""
+    def build_supervisor_prompt(self, task_path: Path) -> str:
+        """Build the structured prompt for the Agent."""
         task_content = task_path.read_text(encoding='utf-8')
 
-        prompt = f"""You are the Digital FTE assistant. Process the following task according to the Company Handbook rules.
+        prompt = f"""You are a JSON generator. You do not speak. You do not greet. You only output valid JSON.
 
-## Company Handbook (Rules & Guidelines)
-{self.handbook[:3000]}
+Input Task: {task_path.name}
+Content: {task_content[:1000]}...
 
----
+Handbook Rules:
+{self.handbook[:500]}...
 
-## Current Task
-**File:** {task_path.name}
-**Location:** {task_path}
-
-{task_content}
-
----
-
-## Instructions
-1. Analyze this task thoroughly
-2. Determine the appropriate action based on the handbook
-3. If the action requires human approval (per handbook rules), create an approval request file in Vault/Pending_Approval/
-4. If auto-approved, execute the action and move the file to Vault/Done/
-5. Log all decisions and actions
-
-## Output
-Provide a clear summary of:
-- What you analyzed
-- What decision you made
-- What action you took
-- Where the file was moved
-
-Remember: Follow the handbook rules strictly. When in doubt, request human approval.
+Task: Analyze if this needs human approval.
+Output format:
+{{
+  "decision": "APPROVE" or "NEEDS_APPROVAL",
+  "target_folder": "Done" or "Pending_Approval", 
+  "analysis": "reasoning"
+}}
+JSON ONLY.
 """
         return prompt
 
-    def invoke_agent(self, prompt: str, task_path: Path, agent: dict = None) -> tuple[bool, str]:
+    def invoke_agent(self, prompt: str, task_path: Path) -> tuple[bool, Dict, str]:
         """
-        Invoke an AI agent with the given prompt.
-
-        Args:
-            prompt: The prompt to send to the agent
-            task_path: Path to the task file
-            agent: Specific agent to use (optional, uses fallback if None)
-
-        Returns:
-            Tuple of (success: bool, agent_name: str)
+        Invoke an AI agent and parse its JSON response.
+        Returns: (success, json_data, agent_name)
         """
         if self.dry_run:
-            logger.info(f"[DRY RUN] Would invoke AI agent with prompt for: {task_path.name}")
-            return True, "dry_run"
+            logger.info(f"[DRY RUN] Would invoke AI agent for: {task_path.name}")
+            return True, {"target_folder": "Done", "analysis": "Dry run"}, "dry_run"
 
-        # Write prompt to temp file
-        prompt_file = CONFIG_PATH / "current_prompt.txt"
-        prompt_file.write_text(prompt, encoding='utf-8')
+        if not self.available_agents:
+            logger.error("No agents available.")
+            return False, {}, "none"
 
-        # Get list of agents to try
-        agents_to_try = [agent] if agent else AVAILABLE_AGENTS
-
-        if not agents_to_try:
-            logger.error("No AI agents available! Install one of: claude, gemini, qwen, copilot, opencode/aider")
-            return False, "none"
-
-        for ai_agent in agents_to_try:
+        for ai_agent in self.available_agents:
             agent_name = ai_agent["name"]
             command = ai_agent["command"]
             prompt_flag = ai_agent["prompt_flag"]
 
             try:
-                logger.info(f"Trying {agent_name.upper()} for task: {task_path.name}")
-
-                # Build command
+                logger.info(f"Invoking {agent_name.upper()}...")
+                
+                cmd = [command, prompt]
                 if prompt_flag:
                     cmd = [command, prompt_flag, prompt]
-                else:
-                    cmd = [command, prompt]
 
                 result = subprocess.run(
                     cmd,
                     capture_output=True,
                     text=True,
-                    timeout=300,  # 5 minute timeout
+                    timeout=120,
                     cwd=str(PROJECT_ROOT),
-                    shell=(os.name == 'nt')  # Use shell on Windows
+                    shell=(os.name == 'nt'),
+                    encoding='utf-8',
+                    errors='replace'
                 )
 
                 if result.returncode == 0:
-                    logger.info(f"{agent_name.upper()} completed successfully")
-                    logger.debug(f"Output: {result.stdout[:500]}")
-                    self._log_action("agent_success", {
-                        "agent": agent_name,
-                        "task": task_path.name
-                    })
-                    return True, agent_name
+                    # Parse JSON output
+                    output = result.stdout.strip()
+                    # Clean markdown code blocks if present
+                    output = re.sub(r'^```json\s*', '', output)
+                    output = re.sub(r'^```\s*', '', output)
+                    output = re.sub(r'\s*```$', '', output)
+                    
+                    try:
+                        data = json.loads(output)
+                        logger.info(f"{agent_name.upper()} returned valid JSON.")
+                        return True, data, agent_name
+                    except json.JSONDecodeError:
+                        logger.warning(f"{agent_name.upper()} output invalid JSON: {output[:100]}...")
+                        # Continue to next agent if JSON fails
                 else:
-                    logger.warning(f"{agent_name.upper()} failed: {result.stderr[:200]}")
-                    # Try next agent
+                    logger.warning(f"{agent_name.upper()} failed (code {result.returncode}): {result.stderr[:200]}")
 
-            except subprocess.TimeoutExpired:
-                logger.warning(f"{agent_name.upper()} timed out, trying next agent...")
-            except FileNotFoundError:
-                logger.warning(f"{agent_name.upper()} not found, trying next agent...")
             except Exception as e:
-                logger.warning(f"{agent_name.upper()} error: {e}, trying next agent...")
+                logger.warning(f"{agent_name.upper()} error: {e}")
 
-        # All agents failed
-        logger.error("All AI agents failed to process the task")
-        self._log_action("all_agents_failed", {"task": task_path.name})
-        return False, "all_failed"
-
-    def invoke_claude(self, prompt: str, task_path: Path) -> bool:
-        """Invoke AI agent with fallback (backward compatible method)."""
-        success, agent_name = self.invoke_agent(prompt, task_path)
-        return success
+        return False, {}, "all_failed"
 
     def process_task(self, task_path: Path) -> bool:
-        """Process a single task through the Ralph Wiggum loop."""
+        """Process a task using Supervisor pattern."""
         task_id = task_path.name
-        logger.info(f"\n{'='*50}")
         logger.info(f"Processing Task: {task_id}")
-        logger.info(f"{'='*50}")
 
-        iteration = 0
-        task_completed = False
+        prompt = self.build_supervisor_prompt(task_path)
+        success, decision_data, agent = self.invoke_agent(prompt, task_path)
 
-        while iteration < self.max_iterations and not task_completed:
-            iteration += 1
-            self.iteration_count += 1
-
-            logger.info(f"Iteration {iteration}/{self.max_iterations}")
-
-            # Build prompt and invoke Claude
-            prompt = self.build_claude_prompt(task_path)
-            success = self.invoke_claude(prompt, task_path)
-
-            if not success:
-                logger.warning(f"Claude invocation failed, retrying...")
-                time.sleep(5)
-                continue
-
-            # Check if task is completed (moved to Done)
-            task_completed = self._check_task_completed(task_path)
-
-            if not task_completed:
-                # Check if moved to Pending_Approval
-                if self._check_pending_approval(task_path):
-                    logger.info(f"Task moved to Pending_Approval, waiting for human...")
-                    task_completed = True  # Exit loop, human will handle
-                else:
-                    logger.info("Task not completed, re-injecting prompt (Ralph Wiggum loop)")
-                    time.sleep(2)
-
-        if task_completed:
-            self.processed_tasks.add(task_id)
-            self._log_action("task_completed", {
-                "task": task_id,
-                "iterations": iteration
-            })
-            return True
-        else:
-            logger.warning(f"Task {task_id} not completed after {self.max_iterations} iterations")
-            self._log_action("task_failed", {
-                "task": task_id,
-                "iterations": iteration,
-                "reason": "max_iterations_exceeded"
-            })
+        if not success:
+            logger.error(f"Failed to get decision for {task_id}")
             return False
 
-    def _check_task_completed(self, original_path: Path) -> bool:
-        """Check if task has been moved to Done folder."""
-        done_path = DONE_PATH / original_path.name
-        return done_path.exists() or not original_path.exists()
+        # Execute decision
+        target_folder = decision_data.get("target_folder")
+        analysis = decision_data.get("analysis", "No analysis provided")
+        
+        logger.info(f"Agent Decision: Move to {target_folder}")
+        logger.info(f"Analysis: {analysis}")
 
-    def _check_pending_approval(self, original_path: Path) -> bool:
-        """Check if task has been moved to Pending_Approval folder."""
-        pending_path = PENDING_APPROVAL_PATH / original_path.name
-        return pending_path.exists()
+        if target_folder == "Done":
+            self._move_task(task_path, DONE_PATH)
+            self._log_action("task_completed", {"task": task_id, "agent": agent, "analysis": analysis})
+            return True
+        elif target_folder == "Pending_Approval":
+            self._move_task(task_path, PENDING_APPROVAL_PATH)
+            self._log_action("task_needs_approval", {"task": task_id, "agent": agent, "analysis": analysis})
+            return True
+        else:
+            logger.warning(f"Unknown target folder: {target_folder}")
+            return False
+
+    def _move_task(self, src: Path, dest_dir: Path):
+        """Move task file to destination."""
+        if self.dry_run:
+            logger.info(f"[DRY RUN] Move {src.name} -> {dest_dir}")
+            return
+            
+        try:
+            dest = dest_dir / src.name
+            shutil.move(str(src), str(dest))
+            logger.info(f"Moved {src.name} to {dest_dir.name}")
+        except Exception as e:
+            logger.error(f"Failed to move file: {e}")
 
     def process_approved_tasks(self):
-        """Process tasks that have been approved by humans."""
+        """Process tasks that have been approved."""
         approved_tasks = self.get_approved_tasks()
-
         for task_path in approved_tasks:
-            # Check if this is a LinkedIn post
+            logger.info(f"Executing Approved Task: {task_path.name}")
+            # For now, approved tasks just go to Done, 
+            # but this is where we'd hook in specific execution logic (like LinkedIn posting)
+            
             if task_path.name.startswith("LinkedIn_"):
-                self._process_approved_linkedin_post(task_path)
-                continue
+                self._process_linkedin(task_path)
+            
+            self._move_task(task_path, DONE_PATH)
+            self._log_action("approved_task_executed", {"task": task_path.name})
 
-            logger.info(f"Processing approved task: {task_path.name}")
-
-            # Build execution prompt
-            prompt = f"""Execute this pre-approved task. The human has approved this action.
-
-Task file: {task_path}
-Content:
-{task_path.read_text(encoding='utf-8')}
-
-Execute the approved action and move the file to Vault/Done/ when complete.
-"""
-
-            success = self.invoke_claude(prompt, task_path)
-
-            if success:
-                self._log_action("approved_task_executed", {
-                    "task": task_path.name,
-                    "result": "success"
-                })
-
-    def _process_approved_linkedin_post(self, task_path: Path):
-        """Process an approved LinkedIn post."""
-        logger.info(f"Processing approved LinkedIn post: {task_path.name}")
+    def _process_linkedin(self, task_path: Path):
+        """Process approved LinkedIn post by calling linkedin_poster."""
+        logger.info(f"Processing LinkedIn post: {task_path.name}")
 
         if self.dry_run:
             logger.info(f"[DRY RUN] Would post to LinkedIn: {task_path.name}")
-            return
+            return True
 
         try:
-            # Import LinkedIn poster
+            # Import here to avoid circular dependencies
+            sys.path.insert(0, str(PROJECT_ROOT / "src"))
             from linkedin.linkedin_poster import LinkedInPoster
+
+            # Read post content
+            content = task_path.read_text(encoding='utf-8')
+
+            # Extract actual post content from approval template
+            # Look for content between "## Proposed LinkedIn Post" and "---"
+            import re
+            match = re.search(r'## Proposed LinkedIn Post\n\n(.*?)\n\n---', content, re.DOTALL)
+            if match:
+                post_content = match.group(1).strip()
+            else:
+                # Fallback: use entire content
+                post_content = content
+
+            # Post to LinkedIn using async
             import asyncio
 
-            async def post_to_linkedin():
+            async def post():
                 poster = LinkedInPoster()
-                await poster.start()
-                try:
-                    count = await poster.process_approved_posts()
-                    return count
-                finally:
-                    await poster.stop()
+                result = await poster.create_post(post_content)
+                return result
 
-            # Run async LinkedIn posting
-            count = asyncio.run(post_to_linkedin())
+            # Run async function
+            result = asyncio.run(post())
 
-            self._log_action("linkedin_post_executed", {
+            logger.info(f"LinkedIn post successful: {result}")
+            self._log_action("linkedin_posted", {
                 "task": task_path.name,
-                "posts_published": count,
-                "result": "success"
+                "result": result
             })
 
-        except ImportError as e:
-            logger.error(f"LinkedIn module not available: {e}")
-            self._log_action("linkedin_post_failed", {
-                "task": task_path.name,
-                "error": "module_not_found"
-            })
+            return True
+
         except Exception as e:
-            logger.error(f"Error posting to LinkedIn: {e}")
-            self._log_action("linkedin_post_failed", {
+            logger.error(f"Failed to post to LinkedIn: {e}")
+            self._log_action("linkedin_error", {
                 "task": task_path.name,
                 "error": str(e)
             })
+            return False
 
     def process_linkedin_queue(self):
-        """Process LinkedIn queue and generate content."""
+        """Process LinkedIn queue using scheduler."""
         try:
-            from linkedin.content_generator import ContentGenerator
+            # Import here to avoid circular dependencies
+            sys.path.insert(0, str(PROJECT_ROOT / "src"))
+            from linkedin.linkedin_scheduler import run_scheduler
 
-            generator = ContentGenerator()
+            logger.info("Running LinkedIn scheduler...")
+            run_scheduler(test_mode=self.dry_run)
 
-            # Process manual posts from queue
-            queue_count = generator.process_queue()
-            if queue_count > 0:
-                logger.info(f"Processed {queue_count} LinkedIn queue items")
-                self._log_action("linkedin_queue_processed", {
-                    "items": queue_count
-                })
-
-        except ImportError:
-            logger.debug("LinkedIn module not available, skipping queue processing")
         except Exception as e:
-            logger.error(f"Error processing LinkedIn queue: {e}")
+            logger.error(f"LinkedIn scheduler error: {e}")
 
     def _log_action(self, action: str, details: Dict[str, Any]):
-        """Log action to daily log file."""
+        """Log action."""
         log_entry = {
             "timestamp": datetime.now().isoformat(),
             "action": action,
             "actor": "orchestrator",
-            "iteration_count": self.iteration_count,
             **details
         }
-
         log_file = LOGS_PATH / f"{datetime.now().strftime('%Y-%m-%d')}.json"
-
+        
         logs = []
         if log_file.exists():
             try:
                 logs = json.loads(log_file.read_text())
-            except json.JSONDecodeError:
+            except:
                 logs = []
-
         logs.append(log_entry)
         log_file.write_text(json.dumps(logs, indent=2))
 
     def run(self):
-        """Main orchestrator loop."""
-        logger.info("Starting Digital FTE Orchestrator main loop...")
-
+        """Main loop."""
+        logger.info("Starting Supervisor Loop...")
         while True:
             try:
-                # Process new tasks in Needs_Action
-                pending_tasks = self.get_pending_tasks()
-                logger.info(f"Found {len(pending_tasks)} pending tasks")
-
-                for task_path in pending_tasks:
-                    if task_path.name not in self.processed_tasks:
-                        self.process_task(task_path)
-
-                # Process LinkedIn queue
+                # Process LinkedIn queue (scheduler)
                 self.process_linkedin_queue()
+
+                # Process pending tasks
+                pending = self.get_pending_tasks()
+                if pending:
+                    logger.info(f"Found {len(pending)} pending tasks")
+                    for task in pending:
+                        self.process_task(task)
 
                 # Process approved tasks (including LinkedIn posts)
                 self.process_approved_tasks()
 
-                # Sleep before next poll
-                logger.debug(f"Sleeping for {self.poll_interval} seconds...")
                 time.sleep(self.poll_interval)
-
             except KeyboardInterrupt:
-                logger.info("Orchestrator stopped by user")
                 break
             except Exception as e:
-                logger.error(f"Error in main loop: {e}")
-                self._log_action("error", {"error": str(e)})
+                logger.error(f"Loop error: {e}")
                 time.sleep(10)
 
-
 def main():
-    """Entry point with argument parsing."""
-    parser = argparse.ArgumentParser(
-        description="Digital FTE Orchestrator - Ralph Wiggum Loop"
-    )
-    parser.add_argument(
-        "--max-iterations", "-m",
-        type=int,
-        default=DEFAULT_MAX_ITERATIONS,
-        help=f"Maximum iterations per task (default: {DEFAULT_MAX_ITERATIONS})"
-    )
-    parser.add_argument(
-        "--poll-interval", "-p",
-        type=int,
-        default=DEFAULT_POLL_INTERVAL,
-        help=f"Seconds between polls (default: {DEFAULT_POLL_INTERVAL})"
-    )
-    parser.add_argument(
-        "--dry-run", "-d",
-        action="store_true",
-        help="Run without executing Claude Code"
-    )
-    parser.add_argument(
-        "--once",
-        action="store_true",
-        help="Process tasks once and exit (no loop)"
-    )
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
-
-    orchestrator = DigitalFTEOrchestrator(
-        max_iterations=args.max_iterations,
-        poll_interval=args.poll_interval,
-        dry_run=args.dry_run
-    )
-
-    if args.once:
-        # Process once and exit
-        pending = orchestrator.get_pending_tasks()
-        for task in pending:
-            orchestrator.process_task(task)
-        orchestrator.process_linkedin_queue()
-        orchestrator.process_approved_tasks()
-    else:
-        # Run continuous loop
-        orchestrator.run()
-
+    
+    orch = DigitalFTEOrchestrator(dry_run=args.dry_run)
+    orch.run()
 
 if __name__ == "__main__":
     main()
