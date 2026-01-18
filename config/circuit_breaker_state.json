@@ -1,0 +1,9 @@
+{
+  "test_service": {
+    "state": "open",
+    "failure_count": 3,
+    "success_count": 0,
+    "last_failure_time": "2026-01-18T11:42:37.427985",
+    "last_state_change": "2026-01-18T11:42:37.428683"
+  }
+}

@@ -14,6 +14,10 @@ from typing import List, Optional, Dict, Any
 # Import audit logger
 from utils.audit_logger import log_audit, AuditDomain, AuditStatus
 
+# Import domain classification
+from utils.domain_classifier import classify_task, ClassificationConfidence
+from models.task import Task, TaskDomain, TaskPriority, TaskStatus, TaskSource
+
 # Configuration
 PROJECT_ROOT = Path(__file__).parent.parent
 VAULT_PATH = PROJECT_ROOT / "Vault"
@@ -274,6 +278,38 @@ JSON ONLY.
         # Check complexity and create plan if needed
         try:
             task_content = task_path.read_text(encoding='utf-8')
+
+            # Classify task domain
+            task_title = task_id.replace('_', ' ').replace('-', ' ')
+            task_domain, domain_confidence = classify_task(
+                title=task_title,
+                description=task_content[:500],  # First 500 chars for classification
+                tags=[]
+            )
+
+            logger.info(f"Task Domain: {task_domain.value} ({domain_confidence.value} confidence)")
+
+            # Map TaskDomain to AuditDomain for audit logging
+            audit_domain_map = {
+                TaskDomain.PERSONAL: AuditDomain.PERSONAL,
+                TaskDomain.BUSINESS: AuditDomain.BUSINESS,
+                TaskDomain.BOTH: AuditDomain.BOTH
+            }
+            audit_domain = audit_domain_map.get(task_domain, AuditDomain.SYSTEM)
+
+            # Update audit log with domain classification
+            log_audit(
+                action="orchestrator.classify_task",
+                actor="orchestrator",
+                domain=audit_domain,
+                resource=task_id,
+                status=AuditStatus.SUCCESS,
+                details={
+                    "task_domain": task_domain.value,
+                    "confidence": domain_confidence.value
+                }
+            )
+
             complexity_info = self.detect_complexity(task_content, task_id)
 
             if complexity_info['is_complex']:
