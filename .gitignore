@@ -34,6 +34,7 @@ env/
 *~
 
 # Sensitive files - NEVER commit
+.env
 config/credentials.json
 config/token.json
 config/.env
@@ -75,6 +76,6 @@ coverage.xml
 .serena/memories/
 config/linkedin_data/
 
-node_modules/
+# Frontend
 frontend/node_modules/
 frontend/.next/
