@@ -103,10 +103,14 @@ GRAPH_API_VERSION=v18.0
 ### Step 3: Generate Keys and Tokens
 
 1. In your app dashboard, go to "Keys and tokens" tab
-2. Generate:
-   - **API Key** and **API Key Secret** (save these)
+2. Generate/copy these credentials:
+   - **Consumer Key** (this is your API Key - save this)
+   - **Consumer Secret** (this is your API Secret - save this)
    - **Bearer Token** (save this)
-   - **Access Token** and **Access Token Secret** (save these)
+   - **Access Token** (save this)
+   - **Access Token Secret** (save this)
+
+**Note:** Twitter uses "Consumer Key/Secret" terminology, but our code refers to them as "API Key/Secret" for consistency.
 
 ### Step 4: Set App Permissions
 
@@ -126,14 +130,21 @@ For advanced features:
 
 ### Step 6: Configure Environment
 
-Add to `.env`:
+Add to `.env` (map Twitter's credentials to our variables):
 ```env
-TWITTER_API_KEY=your_api_key
-TWITTER_API_SECRET=your_api_secret
-TWITTER_ACCESS_TOKEN=your_access_token
-TWITTER_ACCESS_SECRET=your_access_secret
-TWITTER_BEARER_TOKEN=your_bearer_token
+TWITTER_API_KEY=your_consumer_key_here
+TWITTER_API_SECRET=your_consumer_secret_here
+TWITTER_ACCESS_TOKEN=your_access_token_here
+TWITTER_ACCESS_SECRET=your_access_token_secret_here
+TWITTER_BEARER_TOKEN=your_bearer_token_here
 ```
+
+**Credential Mapping:**
+- Twitter's "Consumer Key" → `TWITTER_API_KEY`
+- Twitter's "Consumer Secret" → `TWITTER_API_SECRET`
+- Twitter's "Access Token" → `TWITTER_ACCESS_TOKEN`
+- Twitter's "Access Token Secret" → `TWITTER_ACCESS_SECRET`
+- Twitter's "Bearer Token" → `TWITTER_BEARER_TOKEN`
 
 ---
 

@@ -47,14 +47,16 @@ python scripts/verify.py
 
 ### 2. Configure Environment
 
-Add to `.env`:
+Add to `.env` (use your Twitter credentials):
 ```
-TWITTER_API_KEY=your_api_key_here
-TWITTER_API_SECRET=your_api_secret_here
+TWITTER_API_KEY=your_consumer_key_here
+TWITTER_API_SECRET=your_consumer_secret_here
 TWITTER_ACCESS_TOKEN=your_access_token_here
-TWITTER_ACCESS_SECRET=your_access_secret_here
+TWITTER_ACCESS_SECRET=your_access_token_secret_here
 TWITTER_BEARER_TOKEN=your_bearer_token_here
 ```
+
+**Note:** Twitter calls it "Consumer Key" - that's your API Key.
 
 ## Features
 
