@@ -1,257 +1,177 @@
 # Digital FTE - Personal AI Employee
 
-An autonomous AI agent operating 24/7 to manage personal and business affairs autonomously.
+> **Your autonomous 24/7 digital worker that perceives, reasons, and acts.**
 
-## Overview
+![Status](https://img.shields.io/badge/Status-Bronze%20Tier%20Complete-success)
+![Specs](https://img.shields.io/badge/Specs-Silver%20Tier%20Delivered-blue)
+![Python](https://img.shields.io/badge/Python-3.10+-yellow)
 
-Digital FTE (Full-Time Equivalent) is an AI-powered personal assistant that combines:
-- **Claude Code** as the reasoning engine
-- **Obsidian** as the local knowledge base
-- **Python Watchers** for perception (monitoring emails, files, etc.)
-- **MCP Servers** for external actions
-
-### Key Benefits
-- Operates 8,760 hours/year (vs human 2,000 hours)
-- 85-90% cost savings compared to human FTE
-- 24/7 availability with human-in-the-loop safety
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Digital FTE System                        │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐  │
-│  │   WATCHERS   │───▶│    VAULT     │◀───│    CLAUDE    │  │
-│  │  (Sensors)   │    │  (Obsidian)  │    │    CODE      │  │
-│  └──────────────┘    └──────────────┘    └──────────────┘  │
-│        │                    │                    │          │
-│        ▼                    ▼                    ▼          │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐  │
-│  │ Gmail Watch  │    │ /Needs_Action│    │ Orchestrator │  │
-│  │ File Watch   │    │ /Pending_App │    │ Ralph Wiggum │  │
-│  │ WhatsApp     │    │ /Done        │    │    Loop      │  │
-│  └──────────────┘    └──────────────┘    └──────────────┘  │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Project Structure
-
-```
-Hacathan_2/
-├── Vault/                      # Obsidian vault (knowledge base)
-│   ├── Dashboard.md            # Main control center
-│   ├── Company_Handbook.md     # Rules and guidelines
-│   ├── Inbox/                  # New incoming items
-│   ├── Needs_Action/           # Tasks awaiting processing
-│   ├── Pending_Approval/       # Tasks needing human approval
-│   ├── Approved/               # Tasks human-approved for action
-│   ├── Done/                   # Completed tasks
-│   ├── Logs/                   # Daily JSON logs
-│   ├── Templates/              # Markdown templates
-│   └── Archive/                # Historical tasks (>30 days)
-├── src/
-│   ├── orchestrator.py         # Main loop (Ralph Wiggum pattern)
-│   ├── watchers/
-│   │   └── gmail_watcher.py    # Gmail monitoring daemon
-│   └── utils/
-│       ├── file_manager.py     # Vault file operations
-│       └── logger.py           # Logging utilities
-├── config/
-│   ├── .env.example            # Environment template
-│   └── credentials.json        # Google API credentials (not committed)
-├── .claude/
-│   └── hooks/                  # Claude Code integration hooks
-├── requirements.txt            # Python dependencies
-└── README.md                   # This file
-```
-
-## Quick Start
-
-### Prerequisites
-- Python 3.10+
-- Claude Code CLI installed (`npm install -g @anthropic/claude-code`)
-- Obsidian (optional, for GUI viewing)
-- Google Cloud project with Gmail API enabled
-
-### Installation
-
-1. **Clone and setup environment**
-```bash
-cd Hacathan_2
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-2. **Configure environment**
-```bash
-cp config/.env.example config/.env
-# Edit config/.env with your settings
-```
-
-3. **Setup Gmail API credentials**
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a project and enable Gmail API
-   - Create OAuth 2.0 credentials
-   - Download `credentials.json` to `config/` folder
-
-4. **Authenticate Gmail Watcher**
-```bash
-python src/watchers/gmail_watcher.py
-# Follow OAuth flow in browser (first time only)
-```
-
-### Running the System
-
-**Start Gmail Watcher (in one terminal):**
-```bash
-python src/watchers/gmail_watcher.py
-```
-
-**Start Orchestrator (in another terminal):**
-```bash
-python src/orchestrator.py
-```
-
-**Dry run mode (no actual actions):**
-```bash
-python src/orchestrator.py --dry-run
-```
-
-## Workflow: Perception → Reasoning → Action
-
-### 1. Perception (Watchers)
-Watchers continuously monitor external sources:
-- **Gmail Watcher**: Monitors for new important emails
-- Creates markdown task files in `/Vault/Needs_Action/`
-
-### 2. Reasoning (Claude Code)
-The orchestrator invokes Claude Code to:
-- Analyze tasks against Company Handbook rules
-- Determine appropriate actions
-- Auto-approve or request human approval
-
-### 3. Action (Human-in-the-Loop)
-Based on handbook rules:
-- **Auto-approve**: Low-risk actions execute immediately
-- **Require approval**: Sensitive actions go to `/Pending_Approval/`
-- Human reviews and moves to `/Approved/` to execute
-
-## The Ralph Wiggum Loop
-
-This pattern prevents "lazy agent" behavior:
-
-```
-┌─────────────────────────────────────────┐
-│           Start Processing              │
-└─────────────────┬───────────────────────┘
-                  ▼
-┌─────────────────────────────────────────┐
-│      Invoke Claude Code with Task       │
-└─────────────────┬───────────────────────┘
-                  ▼
-┌─────────────────────────────────────────┐
-│         Check: Task Completed?          │
-└────────┬────────────────────┬───────────┘
-         │ YES                │ NO
-         ▼                    ▼
-┌─────────────┐    ┌─────────────────────┐
-│    Exit     │    │  Re-inject Prompt   │
-│   Success   │    │  (max N iterations) │
-└─────────────┘    └──────────┬──────────┘
-                              │
-                              ▼
-                   ┌──────────────────────┐
-                   │ Back to Claude Code  │
-                   └──────────────────────┘
-```
-
-## Company Handbook Rules
-
-The `Company_Handbook.md` defines:
-
-### Auto-Approve Actions
-- Replies to known contacts
-- Newsletter unsubscribes
-- Recurring subscriptions under $50
-
-### Require Approval
-- Emails to new recipients
-- Payments over $100
-- External business communications
-
-### Priority Keywords
-| Priority | Keywords |
-|----------|----------|
-| URGENT | urgent, asap, emergency, deadline today |
-| HIGH | important, invoice, payment, client |
-| MEDIUM | question, request, update |
-| LOW | newsletter, notification, digest |
-
-## Security
-
-### Credentials
-- **Never** commit credentials to git
-- Use environment variables or system keychains
-- `config/.gitignore` protects sensitive files
-
-### Rate Limits
-| Action | Hourly Limit |
-|--------|-------------|
-| Emails sent | 10 |
-| Payments | 3 |
-| API calls | 100 |
-
-### Audit Logging
-Every action logs to `/Vault/Logs/YYYY-MM-DD.json`:
-- Timestamp
-- Action type
-- Actor
-- Approval status
-- Result
-
-## Hackathon Tier: Bronze
-
-This implementation covers Bronze tier requirements:
-- [x] Basic Obsidian vault structure
-- [x] One watcher script (Gmail)
-- [x] Claude Code integration
-- [x] Folder hierarchy (/Inbox, /Needs_Action, /Done)
-- [x] Human-in-the-loop workflow
-- [x] Audit logging
-
-## Future Enhancements (Silver+)
-
-- [ ] WhatsApp watcher
-- [ ] LinkedIn automation
-- [ ] MCP servers for actions
-- [ ] Odoo ERP integration
-- [ ] Weekly CEO briefings
-- [ ] Cloud deployment
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make changes with tests
-4. Submit a pull request
-
-## License
-
-MIT License - See LICENSE file
-
-## Acknowledgments
-
-- Anthropic for Claude Code
-- Obsidian for local-first knowledge management
-- Google for Gmail API
+**Digital FTE** is an autonomous agentic system designed to handle personal and business operations. Unlike standard chatbots, it runs continuously in the background using a "Watcher-Reasoner-Action" loop to monitor your digital life (Email, Files, Messaging) and take intelligent actions based on your **Company Handbook**.
 
 ---
 
-**Hackathon Submission**
-- Tier: Bronze
-- Demo Video: [Link TBD]
-- Security: Credentials managed via environment variables, not committed
+## 🏗️ Architecture
+
+The system follows the **Ralph Wiggum Loop** pattern for continuous autonomous operation:
+
+```mermaid
+graph TD
+    subgraph Perception ["👀 Perception (Watchers)"]
+        Gmail[Gmail Watcher]
+        File[Filesystem Watcher]
+        WA[WhatsApp Watcher]
+    end
+
+    subgraph Memory ["🧠 Local Knowledge (Obsidian)"]
+        Vault[Vault Storage]
+        Inbox[/Vault/Inbox]
+        Needs[/Vault/Needs_Action]
+        Logs[/Vault/Logs]
+    end
+
+    subgraph Reasoning ["🤔 Reasoning Engine"]
+        Orchestrator[Orchestrator]
+        Claude[Claude Code / LLM]
+    end
+
+    subgraph Action ["⚡ Action Layer"]
+        Approve{Human Review?}
+        Exec[Execute Action]
+        MCP[MCP Servers]
+        EmailSender[Email Sender Tool]
+    end
+
+    Gmail --> Inbox
+    File --> Inbox
+    WA --> Inbox
+    
+    Inbox --> Orchestrator
+    Orchestrator --> Claude
+    Claude -- "Consults" --> Vault
+    Claude --> Needs
+    
+    Needs --> Approve
+    Approve -- "Auto-Approve" --> Exec
+    Approve -- "Risk > Threshold" --> Needs
+    
+    Exec --> MCP
+    MCP --> EmailSender
+    MCP --> Logs
+```
+
+### Core Components
+1.  **Service Manager**: Daemon that keeps all watchers and the orchestrator running (`src/service_manager.py`).
+2.  **Watchers**: Python scripts that poll external sources and create markdown tasks in the Vault.
+3.  **Orchestrator**: The main loop that processes tasks from `Needs_Action` using AI.
+4.  **Vault**: An Obsidian-compatible folder structure acting as the agent's long-term memory and UI.
+
+---
+
+## ✨ Capabilities & Features
+
+### 🥉 Bronze Tier (Live)
+*   **Centralized Control**: `Service Manager` handles startup and crash recovery for all agents.
+*   **Gmail Monitoring**: `Gmail Watcher` polls inbox for high-priority emails.
+*   **Contextual Intelligence**: Actions are governed by `Vault/Company_Handbook.md`.
+*   **Human-in-the-loop**: High-risk actions (e.g., sending emails to new contacts) wait for your approval in `Vault/Pending_Approval`.
+*   **Audit Logging**: Every action is cryptographically logged in `Vault/Logs/`.
+*   **Email MCP**: Tool for agents to send emails safely.
+
+### 🥈 Silver Tier (Specified & Ready to Build)
+*   **WhatsApp Integration**: Watcher for processing WhatsApp messages.
+*   **Filesystem Watcher**: "Drop folder" automation for document processing.
+*   **CEO Briefing**: Weekly autonomous report generation on agent activities.
+*   **Laptop Startup**: Auto-boot scripts to launch Digital FTE on login.
+
+> *Silver Tier specifications are available in `specs/` directory.*
+
+---
+
+## 📂 Project Structure
+
+```text
+Hacathan_2/
+├── 📋 specs/                   # SpecifyPlus Feature Specifications
+│   ├── 001-laptop-startup-spec.md
+│   ├── 002-email-sender-mcp-spec.md
+│   └── ...
+├── 🛠️ src/                     # Source Code
+│   ├── mcp_servers/            # Model Context Protocol Servers
+│   ├── watchers/               # Perception Agents (Gmail, Filesystem)
+│   ├── reports/                # Report Generators
+│   ├── orchestrator.py         # Main Reasoning Loop
+│   └── service_manager.py      # System Daemon
+├── 🧠 Vault/                   # Obsidian Knowledge Base
+│   ├── Inbox/                  # Raw incoming signals
+│   ├── Needs_Action/           # Tasks awaiting AI processing
+│   ├── Pending_Approval/       # Tasks awaiting Human review
+│   ├── Approved/               # Tasks authorized for execution
+│   └── Logs/                   # System operation logs
+├── ⚙️ config/                  # Configuration & Env Vars
+└── 📄 README.md                # This file
+```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+*   Python 3.10+
+*   Google Cloud Project (for Gmail API)
+*   User account for WhatsApp (optional)
+
+### Installation
+
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/AbdullahMalik17/Hacathan-2-.git
+    cd Hacathan-2-
+    ```
+
+2.  **Install Dependencies**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3.  **Configure Environment**
+    ```bash
+    cp config/.env.example config/.env
+    # Edit config/.env with your API keys
+    ```
+    *Place `credentials.json` from Google Cloud in `config/`.*
+
+### Running the System
+
+Start the full system (Watchers + Orchestrator) with the Service Manager:
+
+```bash
+python src/service_manager.py
+```
+
+*The Service Manager will:*
+*   *Start the Gmail Watcher*
+*   *Start the Orchestrator*
+*   *Monitor processes and auto-restart crashes*
+*   *Log system health to `Vault/Logs/startup_log.md`*
+
+---
+
+## 📚 Documentation
+
+*   **[Quick Start Guide](QUICK_START.md)**: How to use the specifications.
+*   **[Specs Index](SPECS_INDEX.md)**: Master list of all features.
+*   **[Company Handbook](Vault/Company_Handbook.md)**: Rules governing the AI's behavior.
+
+---
+
+## 🤝 Contributing
+
+We follow a **Specification-Driven Development** workflow:
+1.  Read the relevant `specs/*.md` file.
+2.  Generate an implementation plan (`/sp.plan`).
+3.  Implement features using TDD.
+4.  Submit PR.
+
+## License
+
+MIT License.
