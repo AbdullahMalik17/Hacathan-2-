@@ -1,0 +1,14 @@
+2026-01-21 14:39:10,318 - GmailWatcher - INFO - ==================================================
+2026-01-21 14:39:10,318 - GmailWatcher - INFO - Gmail Watcher Starting...
+2026-01-21 14:39:10,318 - GmailWatcher - INFO - Vault Path: D:\Hacathan_2\Vault
+2026-01-21 14:39:10,318 - GmailWatcher - INFO - Poll Interval: 60 seconds
+2026-01-21 14:39:10,318 - GmailWatcher - INFO - Dry Run: False
+2026-01-21 14:39:10,318 - GmailWatcher - INFO - ==================================================
+2026-01-21 14:39:10,330 - GmailWatcher - INFO - Refreshing expired credentials...
+2026-01-21 14:39:11,193 - GmailWatcher - INFO - Credentials saved to D:\Hacathan_2\config\token.json
+2026-01-21 14:39:11,211 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-01-21 14:39:11,223 - GmailWatcher - INFO - Successfully authenticated with Gmail API
+2026-01-21 14:39:12,801 - GmailWatcher - INFO - Processing: Immediate action required: Your Google Cloud Platform/API project Deep Research Agent (id: gen-lang-client-0525822006) is being suspended
+2026-01-21 14:39:12,803 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-21_14-39_gmail_urgent_Immediate action required Your Google Cloud Platfo.md
+2026-01-21 14:39:12,807 - GmailWatcher - INFO - Processing: Google Cloud Console Appeal Notification 161251928370
+2026-01-21 14:39:12,809 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-21_14-39_gmail_medium_Google Cloud Console Appeal Notification 161251928.md
