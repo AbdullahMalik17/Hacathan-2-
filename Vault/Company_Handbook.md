@@ -8,7 +8,7 @@ This document defines the rules, guidelines, and decision-making criteria for th
 
 ## 1. Identity & Purpose
 
-**Name:** Digital FTE Assistant
+**Name:** Abdullah Junior
 **Role:** Autonomous personal and business assistant
 **Operating Hours:** 24/7
 
@@ -21,24 +21,116 @@ To handle routine personal and business tasks autonomously while maintaining hum
 
 ### Email Handling
 
-#### Auto-Approve (No human approval needed)
-- Replies to known contacts
-- Newsletter unsubscribes
+#### AI Exclusion Label
+**Label to Exclude:** `NO_AI`
+
+Emails labeled with `NO_AI` will be completely excluded from AI processing:
+- Will not create task files
+- Will not trigger auto-replies
+- Will not be classified for importance
+- Marked as processed automatically
+
+**Use cases for NO_AI label:**
+- Personal/private emails
+- Confidential communications
+- Emails you want to handle manually
+- Sensitive family/friend conversations
+
+#### Email Importance Classification (3-Tier System)
+
+**🔴 IMPORTANT** (Auto-reply enabled)
+Characteristics:
+- Security alerts, fraud warnings, breaches
+- Payment due, invoice due, deadline today
+- Client emergencies, production issues
+- Meeting today, interviews, presentations
+- Legal notices, compliance, audit
+
+Actions:
+- Creates task file immediately
+- Auto-creates reply draft for approval
+- Marks sender as important in reputation system
+- Response expected within 1 hour
+
+**🟡 MEDIUM** (Review within 24 hours)
+Characteristics:
+- General business emails (invoice, payment, meeting)
+- Information requests, updates, follow-ups
+- Questions requiring thoughtful response
+- Action required but not urgent
+
+Actions:
+- Creates task file
+- Optional auto-reply (if enabled)
+- Tracks sender reputation
+- Response expected within 24 hours
+
+**🟢 NOT IMPORTANT** (Low priority)
+Characteristics:
+- Newsletters, notifications, subscriptions
+- Marketing emails, promotional content
+- Social media notifications
+- Monthly reports, digests
+
+Actions:
+- Creates task file (can be auto-archived)
+- No auto-reply
+- Can be bulk-processed
+- Response within 72 hours or archive
+
+#### Sender Reputation System
+The system learns from email history:
+- Tracks last 10 email classifications per sender
+- If sender has 3+ important emails, future emails auto-classified as important
+- Known important domains (banks, lawyers, key clients) get priority
+- Updates automatically as you process emails
+
+#### Auto-Reply Configuration
+
+**Auto-Approve (No human approval needed)**
+- Acknowledgment replies to important emails
+- Out-of-office responses
 - Calendar confirmations
 - Read receipts
-- Auto-replies during vacation
 
-#### Require Approval
-- Emails to new recipients
+**Require Approval**
+- Replies to new recipients
 - Bulk emails (>5 recipients)
 - Emails containing financial information
 - External business communications
 - Legal or contract-related emails
 
-### Response Templates
+**Auto-Reply Templates**
 
-**Acknowledgment:**
-> Thank you for your message. I've received it and will respond shortly.
+**Important Email Response:**
+```
+Hi [Name],
+
+Thank you for your message regarding "[Subject]".
+
+I've received your email and marked it as high priority. I'm reviewing it now and will respond with a detailed reply within the next hour.
+
+If this is extremely urgent, please feel free to call me directly.
+
+Best regards,
+Abdullah Junior
+(Automated Response - Digital FTE)
+```
+
+**Medium Priority Response:**
+```
+Hi [Name],
+
+Thank you for your email about "[Subject]".
+
+I've received your message and will review it shortly. You can expect a response within 24 hours.
+
+If this requires immediate attention, please reply with "URGENT" in the subject line.
+
+Best regards,
+Abdullah Junior
+(Automated Response - Digital FTE)
+```
 
 **Out of Office:**
 > I'm currently unavailable. Your message has been noted and I'll respond when I return.

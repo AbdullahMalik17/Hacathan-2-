@@ -1,0 +1,97 @@
+2026-01-17 10:42:14,343 - GmailWatcher - INFO - ==================================================
+2026-01-17 10:42:14,343 - GmailWatcher - INFO - Gmail Watcher Starting...
+2026-01-17 10:42:14,343 - GmailWatcher - INFO - Vault Path: D:\Hacathan_2\Vault
+2026-01-17 10:42:14,344 - GmailWatcher - INFO - Poll Interval: 60 seconds
+2026-01-17 10:42:14,344 - GmailWatcher - INFO - Dry Run: False
+2026-01-17 10:42:14,344 - GmailWatcher - INFO - ==================================================
+2026-01-17 10:42:14,375 - GmailWatcher - INFO - Refreshing expired credentials...
+2026-01-17 10:42:15,887 - GmailWatcher - INFO - Credentials saved to D:\Hacathan_2\config\token.json
+2026-01-17 10:42:15,906 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-01-17 10:42:15,918 - GmailWatcher - INFO - Successfully authenticated with Gmail API
+2026-01-17 10:42:23,854 - WhatsAppWatcher - INFO - ==================================================
+2026-01-17 10:42:23,854 - WhatsAppWatcher - INFO - WhatsApp Watcher Starting...
+2026-01-17 10:42:23,854 - WhatsAppWatcher - INFO - Poll Interval: 30 seconds
+2026-01-17 10:42:23,855 - WhatsAppWatcher - INFO - Dry Run: False
+2026-01-17 10:42:23,855 - WhatsAppWatcher - INFO - Headless: False
+2026-01-17 10:42:23,855 - WhatsAppWatcher - INFO - ==================================================
+2026-01-17 10:42:23,857 - WhatsAppWatcher - INFO - Starting WhatsApp Watcher...
+2026-01-17 10:42:25,046 - FilesystemWatcher - INFO - ==================================================
+2026-01-17 10:42:25,046 - FilesystemWatcher - INFO - Filesystem Watcher Starting...
+2026-01-17 10:42:25,046 - FilesystemWatcher - INFO - Watch Folder: D:\Hacathan_2\DropFolder
+2026-01-17 10:42:25,047 - FilesystemWatcher - INFO - Dry Run: False
+2026-01-17 10:42:25,047 - FilesystemWatcher - INFO - Debounce: 5s
+2026-01-17 10:42:25,047 - FilesystemWatcher - INFO - ==================================================
+2026-01-17 10:42:25,051 - FilesystemWatcher - INFO - Watching folder: D:\Hacathan_2\DropFolder
+2026-01-17 10:42:27,721 - GmailWatcher - INFO - ==================================================
+2026-01-17 10:42:27,722 - GmailWatcher - INFO - Gmail Watcher Starting...
+2026-01-17 10:42:27,723 - GmailWatcher - INFO - Vault Path: D:\Hacathan_2\Vault
+2026-01-17 10:42:27,723 - GmailWatcher - INFO - Poll Interval: 60 seconds
+2026-01-17 10:42:27,723 - GmailWatcher - INFO - Dry Run: False
+2026-01-17 10:42:27,724 - GmailWatcher - INFO - ==================================================
+2026-01-17 10:42:27,756 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-01-17 10:42:27,760 - GmailWatcher - INFO - Successfully authenticated with Gmail API
+2026-01-17 10:46:24,968 - GmailWatcher - INFO - Logging to file: D:\Hacathan_2\Vault\Logs\gmail_watcher_2026-01-17.log
+2026-01-17 10:46:25,007 - GmailWatcher - INFO - Successfully authenticated with Gmail API
+2026-01-17 10:55:58,270 - GmailWatcher - INFO - Logging to file: D:\Hacathan_2\Vault\Logs\gmail_watcher_2026-01-17.log
+2026-01-17 10:55:58,320 - GmailWatcher - INFO - Successfully authenticated with Gmail API
+2026-01-17 13:47:39,304 - GmailWatcher - ERROR - Error in main loop: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-01-17 13:48:14,386 - GmailWatcher - ERROR - Error in main loop: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-01-17 17:16:06,664 - GmailWatcher - ERROR - Error in main loop: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-01-17 17:16:41,648 - GmailWatcher - ERROR - Error in main loop: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-01-17 17:17:06,685 - GmailWatcher - ERROR - Error in main loop: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-01-17 17:17:41,660 - GmailWatcher - ERROR - Error in main loop: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-01-17 17:18:06,717 - GmailWatcher - ERROR - Error in main loop: Unable to find the server at oauth2.googleapis.com
+2026-01-17 20:19:57,416 - GmailWatcher - INFO - Logging to file: D:\Hacathan_2\Vault\Logs\gmail_watcher_2026-01-17.log
+2026-01-17 20:19:57,422 - GmailWatcher - INFO - Refreshing expired credentials...
+2026-01-17 20:19:58,215 - GmailWatcher - ERROR - Failed to authenticate: ('invalid_scope: Bad Request', {'error': 'invalid_scope', 'error_description': 'Bad Request'})
+2026-01-17 20:20:20,562 - GmailWatcher - INFO - Logging to file: D:\Hacathan_2\Vault\Logs\gmail_watcher_2026-01-17.log
+2026-01-17 20:20:20,567 - GmailWatcher - INFO - Refreshing expired credentials...
+2026-01-17 20:20:21,265 - GmailWatcher - ERROR - Failed to authenticate: ('invalid_scope: Bad Request', {'error': 'invalid_scope', 'error_description': 'Bad Request'})
+2026-01-17 20:23:22,180 - GmailWatcher - INFO - Logging to file: D:\Hacathan_2\Vault\Logs\gmail_watcher_2026-01-17.log
+2026-01-17 20:23:22,182 - GmailWatcher - INFO - Starting OAuth flow...
+2026-01-17 20:23:47,659 - GmailWatcher - INFO - Credentials saved to D:\Hacathan_2\config\token.json
+2026-01-17 20:23:47,680 - GmailWatcher - INFO - Successfully authenticated with Gmail API
+2026-01-17 20:23:55,436 - GmailWatcher - INFO - Processing [MEDIUM]: [Incident: 260117-000238] Oracle Cloud Sign Up from Oracle Customer Service <oraclehelp_ww@oracle.com>
+2026-01-17 20:23:55,436 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_Incident 260117-000238 Oracle Cloud Sign Up.md
+2026-01-17 20:23:55,442 - GmailWatcher - INFO - Processing [MEDIUM]: Who's Who in "A Knight of the Seven Kingdoms?" from IMDb <do-not-reply@imdb.com>
+2026-01-17 20:23:55,448 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_Whos Who in A Knight of the Seven Kingdoms.md
+2026-01-17 20:23:55,453 - GmailWatcher - INFO - Processing [MEDIUM]: Re: [openai/openai-python] release: 2.16.0 (PR #2824) from "stainless-app[bot]" <notifications@github.com>
+2026-01-17 20:23:55,456 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_Re openaiopenai-python release 2160 PR 2824.md
+2026-01-17 20:23:55,460 - GmailWatcher - INFO - Processing [NOT_IMPORTANT]: Never forget anything | Jacob Bennett from Medium Daily Digest <noreply@medium.com>
+2026-01-17 20:23:55,465 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_not_important_Never forget anything  Jacob Bennett.md
+2026-01-17 20:23:55,470 - GmailWatcher - INFO - Processing [MEDIUM]: Enforce 2FA, CLI command structure, Singapore Buckets from Railway <hello@news.railway.app>
+2026-01-17 20:23:55,475 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_Enforce 2FA CLI command structure Singapore Bucket.md
+2026-01-17 20:23:55,480 - GmailWatcher - INFO - Processing [MEDIUM]: Florence accepted your invitation, explore their network from "Florence Tyloo, MSc via LinkedIn" <invitations@linkedin.com>
+2026-01-17 20:23:55,484 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_Florence accepted your invitation explore their ne.md
+2026-01-17 20:23:55,488 - GmailWatcher - INFO - Processing [MEDIUM]: Custom Data Anonymization, Neon Auth in Vercel previews, new homepage from Neon Changelog <changelog@neon.tech>
+2026-01-17 20:23:55,493 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_Custom Data Anonymization Neon Auth in Vercel prev.md
+2026-01-17 20:23:55,513 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_Welcome to your Zapier Chatbots trial  .md
+2026-01-17 20:23:55,523 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_Welcome aboard   Lets make some magic with AI.md
+2026-01-17 20:23:55,530 - GmailWatcher - INFO - Processing [NOT_IMPORTANT]: Re: [openai/openai-python] release: 2.16.0 (PR #2824) from "stainless-app[bot]" <notifications@github.com>
+2026-01-17 20:23:55,535 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_not_important_Re openaiopenai-python release 2160 PR 2824.md
+2026-01-17 20:23:55,543 - GmailWatcher - INFO - Processing [MEDIUM]: 7 AI Capabilities Ready for Business in 2026 from Alex Wang via LinkedIn <newsletters-noreply@linkedin.com>
+2026-01-17 20:23:55,549 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_7 AI Capabilities Ready for Business in 2026.md
+2026-01-17 20:23:55,551 - GmailWatcher - INFO - Processing [NOT_IMPORTANT]: All The Basics That You Need To Know About LLMs | Dr. Ashish Bamania in Level Up Coding from Medium Daily Digest <noreply@medium.com>
+2026-01-17 20:23:55,557 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_not_important_All The Basics That You Need To Know About LLMs  D.md
+2026-01-17 20:23:55,565 - GmailWatcher - INFO - Processing [MEDIUM]: Re: [openai/openai-python] memory leak, consumes entire system after just days of usage (Issue #1181) from Jordan Hart <notifications@github.com>
+2026-01-17 20:23:55,570 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_Re openaiopenai-python memory leak consumes entire.md
+2026-01-17 20:23:55,574 - GmailWatcher - INFO - Processing [MEDIUM]: Re: [openai/openai-python] memory leak, consumes entire system after just days of usage (Issue #1181) from Victorien <notifications@github.com>
+2026-01-17 20:23:55,578 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_Re openaiopenai-python memory leak consumes entire.md
+2026-01-17 20:23:55,585 - GmailWatcher - INFO - Processing [MEDIUM]: Re: [openai/openai-python] Slow import times (due to openai.types) (Issue #2819) from Shay Nehmad <notifications@github.com>
+2026-01-17 20:23:55,589 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_Re openaiopenai-python Slow import times due to op.md
+2026-01-17 20:23:55,595 - GmailWatcher - INFO - Processing [MEDIUM]: I want to connect from Shereen Aijaz <invitations@linkedin.com>
+2026-01-17 20:23:55,601 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_I want to connect.md
+2026-01-17 20:23:55,603 - GmailWatcher - INFO - Processing [MEDIUM]: Agentic Intelligence + Multi-Edit Precision from Adam Fard <adam@uxpilot.ai>
+2026-01-17 20:23:55,611 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_Agentic Intelligence  Multi-Edit Precision.md
+2026-01-17 20:23:55,616 - GmailWatcher - INFO - Processing [MEDIUM]: Re: [openai/openai-python] fix: correct model name gpt-5.1-mini to gpt-5.1-codex-mini (PR #2789) from lif <notifications@github.com>
+2026-01-17 20:23:55,622 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_medium_Re openaiopenai-python fix correct model name gpt-.md
+2026-01-17 20:23:55,626 - GmailWatcher - INFO - Processing [NOT_IMPORTANT]: Re: [openai/openai-python] fix: correct model name gpt-5.1-mini to gpt-5.1-codex-mini (PR #2789) from lif <notifications@github.com>
+2026-01-17 20:23:55,632 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_20-23_gmail_not_important_Re openaiopenai-python fix correct model name gpt-.md
+2026-01-17 20:31:46,604 - GmailWatcher - INFO - Logging to file: D:\Hacathan_2\Vault\Logs\gmail_watcher_2026-01-17.log
+2026-01-17 20:31:46,644 - GmailWatcher - INFO - Successfully authenticated with Gmail API
+2026-01-17 21:19:06,978 - GmailWatcher - INFO - Processing [MEDIUM]: 19 profile views from LinkedIn <messages-noreply@linkedin.com>
+2026-01-17 21:19:07,019 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_21-19_gmail_medium_19 profile views.md
+2026-01-17 21:30:12,444 - GmailWatcher - INFO - Processing [MEDIUM]: Appeal Received: Your Google Cloud Project Abdullah Malik Portfolio (id: gen-lang-client-0110984895) from google-cloud-compliance-noreply@google.com
+2026-01-17 21:30:12,462 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_21-30_gmail_medium_Appeal Received Your Google Cloud Project Abdullah.md
+2026-01-17 22:15:41,170 - GmailWatcher - INFO - Processing [MEDIUM]: Muhammad Abdullah, add Muhammad Zubair from LinkedIn <messages-noreply@linkedin.com>
+2026-01-17 22:15:41,190 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-17_22-15_gmail_medium_Muhammad Abdullah add Muhammad Zubair.md

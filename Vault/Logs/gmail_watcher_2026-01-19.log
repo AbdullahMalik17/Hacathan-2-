@@ -1,0 +1,43 @@
+2026-01-19 22:58:40,193 - GmailWatcher - INFO - Logging to file: D:\Hacathan_2\Vault\Logs\gmail_watcher_2026-01-19.log
+2026-01-19 22:58:40,197 - GmailWatcher - INFO - Refreshing expired credentials...
+2026-01-19 22:58:40,815 - GmailWatcher - INFO - Credentials saved to D:\Hacathan_2\config\token.json
+2026-01-19 22:58:40,821 - GmailWatcher - INFO - Successfully authenticated with Gmail API
+2026-01-19 22:58:48,080 - GmailWatcher - INFO - Processing [MEDIUM]: Re: [openai/openai-python] release: 2.16.0 (PR #2824) from "stainless-app[bot]" <notifications@github.com>
+2026-01-19 22:58:48,084 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_medium_Re openaiopenai-python release 2160 PR 2824.md
+2026-01-19 22:58:48,095 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_medium_ Building AI-Powered APIs with FastAPI and OpenAI .md
+2026-01-19 22:58:48,098 - GmailWatcher - INFO - Processing [NOT_IMPORTANT]: Re: [openai/openai-python] AzureOpenAI models does not support files (Issue #2826) from Javier <notifications@github.com>
+2026-01-19 22:58:48,101 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_not_important_Re openaiopenai-python AzureOpenAI models does not.md
+2026-01-19 22:58:48,105 - GmailWatcher - INFO - Processing [MEDIUM]: [openai/openai-python] AzureOpenAI models does not support files (Issue #2826) from Javier <notifications@github.com>
+2026-01-19 22:58:48,108 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_medium_openaiopenai-python AzureOpenAI models does not su.md
+2026-01-19 22:58:48,111 - GmailWatcher - INFO - Processing [MEDIUM]: Re: [openai/openai-python] Introduce item_reference as ConversationItem in realtime types (Issue #2794) from Daniele Antonio Maggio <notifications@github.com>
+2026-01-19 22:58:48,115 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_medium_Re openaiopenai-python Introduce item_reference as.md
+2026-01-19 22:58:48,117 - GmailWatcher - INFO - Processing [NOT_IMPORTANT]: Re: [openai/openai-python] Introduce item_reference as ConversationItem in realtime types (Issue #2794) from Daniele Antonio Maggio <notifications@github.com>
+2026-01-19 22:58:48,119 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_not_important_Re openaiopenai-python Introduce item_reference as.md
+2026-01-19 22:58:48,122 - GmailWatcher - INFO - Processing [MEDIUM]: Re: [openai/openai-python] memory leak, consumes entire system after just days of usage (Issue #1181) from Hans Christian Lundberg <notifications@github.com>
+2026-01-19 22:58:48,124 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_medium_Re openaiopenai-python memory leak consumes entire.md
+2026-01-19 22:58:48,128 - GmailWatcher - INFO - Processing [MEDIUM]: [Kilo] You moved fast yesterday. Try a different model. from "Brendan O'Leary" <hi@kilocode.ai>
+2026-01-19 22:58:48,131 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_medium_Kilo You moved fast yesterday Try a different mode.md
+2026-01-19 22:58:48,138 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_not_important_Weekly Ethereum News                        120120.md
+2026-01-19 22:58:48,140 - GmailWatcher - INFO - Processing [NOT_IMPORTANT]: Re: [openai/openai-python] release: 2.16.0 (PR #2824) from "stainless-app[bot]" <notifications@github.com>
+2026-01-19 22:58:48,143 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_not_important_Re openaiopenai-python release 2160 PR 2824.md
+2026-01-19 22:58:48,146 - GmailWatcher - INFO - Processing [MEDIUM]: Manage and organize your PDFs with ease! from Sarah from pdfFiller <sarah@pdffiller.com>
+2026-01-19 22:58:48,149 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_medium_Manage and organize your PDFs with ease.md
+2026-01-19 22:58:48,153 - GmailWatcher - INFO - Processing [MEDIUM]: I want to connect from Farhan Ahmed <invitations@linkedin.com>
+2026-01-19 22:58:48,156 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_medium_I want to connect.md
+2026-01-19 22:58:48,160 - GmailWatcher - INFO - Processing [MEDIUM]: Re: [openai/openai-python] Cancel for streaming Responses (Issue #2643) from dprkh <notifications@github.com>
+2026-01-19 22:58:48,164 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_medium_Re openaiopenai-python Cancel for streaming Respon.md
+2026-01-19 22:58:48,167 - GmailWatcher - INFO - Processing [NOT_IMPORTANT]: Why Nobody Wants to Hire You Anymore | Jason Weiland in Startup Stash from Medium Daily Digest <noreply@medium.com>
+2026-01-19 22:58:48,172 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_not_important_Why Nobody Wants to Hire You Anymore  Jason Weilan.md
+2026-01-19 22:58:48,179 - GmailWatcher - INFO - Processing [MEDIUM]: Stay visible and respond fast when the right job posts from Upwork <upwork@email.upwork.com>
+2026-01-19 22:58:48,186 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_medium_Stay visible and respond fast when the right job p.md
+2026-01-19 22:58:48,192 - GmailWatcher - INFO - Processing [MEDIUM]: Find hiring managers with Premium’s new ‘actively hiring’ filter from Michelle and the LinkedIn Premium team <linkedin@em.linkedin.com>
+2026-01-19 22:58:48,203 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_medium_Find hiring managers with Premiums new actively hi.md
+2026-01-19 22:58:48,207 - GmailWatcher - INFO - Processing [MEDIUM]: Re: [openai/openai-python] Feature Request: Add HTTP/2 Support for High-Concurrency Workloads (Issue #2726) from HavenCTO <notifications@github.com>
+2026-01-19 22:58:48,212 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_medium_Re openaiopenai-python Feature Request Add HTTP2 S.md
+2026-01-19 22:58:48,217 - GmailWatcher - INFO - Processing [MEDIUM]: Re: [openai/openai-python] memory leak, consumes entire system after just days of usage (Issue #1181) from Victorien <notifications@github.com>
+2026-01-19 22:58:48,221 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_medium_Re openaiopenai-python memory leak consumes entire.md
+2026-01-19 22:58:48,231 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_medium_Welcome to your new AI teammate  .md
+2026-01-19 22:58:48,235 - GmailWatcher - INFO - Processing [NOT_IMPORTANT]: Abdullahmalik17: Your Odoo Periodic Digest from Abdullahmalik17 <notifications@abdullahmalik17.odoo.com>
+2026-01-19 22:58:48,238 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_22-58_gmail_not_important_Abdullahmalik17 Your Odoo Periodic Digest.md
+2026-01-19 23:25:57,709 - GmailWatcher - INFO - Processing [MEDIUM]: How we’re actually using AI inside teams from Wade at Zapier <learn@send.zapier.com>
+2026-01-19 23:25:57,751 - GmailWatcher - INFO - Created task file: D:\Hacathan_2\Vault\Needs_Action\2026-01-19_23-25_gmail_medium_How were actually using AI inside teams.md

@@ -1,0 +1,12 @@
+{
+  "task_id": "test_task_001",
+  "task_data": {
+    "action": "test",
+    "params": {}
+  },
+  "error": "Simulated permanent failure",
+  "retry_count": 3,
+  "enqueued_at": "2026-01-18T11:42:37.436365",
+  "last_attempt": null,
+  "status": "failed"
+}

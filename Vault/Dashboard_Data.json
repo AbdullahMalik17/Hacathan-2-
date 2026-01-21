@@ -1,0 +1,67 @@
+{
+  "last_updated": "2026-01-18T11:50:41.336728",
+  "system_status": "degraded",
+  "services": {
+    "Gmail Watcher": {
+      "name": "Gmail Watcher",
+      "status": "unhealthy",
+      "last_check": "2026-01-18T11:50:40.310592",
+      "response_time_ms": 2,
+      "error_message": "Health check failed",
+      "uptime_percent": 0.0,
+      "details": {
+        "check_function": null,
+        "circuit_breaker": null
+      }
+    },
+    "Orchestrator": {
+      "name": "Orchestrator",
+      "status": "healthy",
+      "last_check": "2026-01-18T11:50:40.314581",
+      "response_time_ms": 3,
+      "error_message": null,
+      "uptime_percent": 100.0,
+      "details": {
+        "check_function": null,
+        "circuit_breaker": null
+      }
+    },
+    "Email Sender MCP": {
+      "name": "Email Sender MCP",
+      "status": "healthy",
+      "last_check": "2026-01-18T11:50:40.314662",
+      "response_time_ms": 0,
+      "error_message": null,
+      "uptime_percent": 0.0,
+      "details": {
+        "check_function": null,
+        "circuit_breaker": null
+      }
+    }
+  },
+  "metrics": {
+    "timestamp": "2026-01-18T11:50:41.322450",
+    "task_processing_avg_ms": null,
+    "task_processing_p95_ms": null,
+    "task_processing_p99_ms": null,
+    "mcp_response_avg_ms": 5000.0,
+    "error_rate_percent": 50.0,
+    "tasks_processed_today": 0,
+    "tasks_failed_today": 0,
+    "cpu_percent": 40.6,
+    "memory_percent": 86.7,
+    "disk_percent": 21.7
+  },
+  "alerts": [
+    {
+      "severity": "high",
+      "message": "Service Gmail Watcher is unhealthy: Health check failed",
+      "timestamp": "2026-01-18T11:50:40.310592"
+    },
+    {
+      "severity": "medium",
+      "message": "High error rate: 50.0%",
+      "timestamp": "2026-01-18T11:50:41.322450"
+    }
+  ]
+}
