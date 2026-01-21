@@ -1,14 +1,5 @@
-"""
-WhatsApp Watcher - Digital FTE Sensory System
-
-This script monitors WhatsApp Web for new messages using Playwright
-browser automation and creates markdown task files in the Obsidian vault.
-
-Setup:
-1. Install Playwright: pip install playwright
-2. Install browser: playwright install chromium
-3. Run script and scan QR code to authenticate
-"""
+# WhatsApp Watcher - Digital FTE Sensory System
+# This script monitors WhatsApp Web for new messages using Playwright
 
 import os
 import sys
@@ -16,103 +7,99 @@ import json
 import time
 import asyncio
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, List, Any
 
 try:
-    from playwright.async_api import async_playwright, Browser, Page
+    from playwright.async_api import async_playwright, Browser, Page, BrowserContext
 except ImportError:
-    print("Playwright not installed. Run:")
-    print("pip install playwright")
-    print("playwright install chromium")
+    print("Playwright not installed.")
     sys.exit(1)
 
 # Configuration
 PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+# Import contact manager
+sys.path.append(str(PROJECT_ROOT / "src"))
+try:
+    from utils.contacts import is_known_contact, get_contact_info
+except ImportError:
+    def is_known_contact(name): return False
+    def get_contact_info(name): return None
+
 VAULT_PATH = PROJECT_ROOT / "Vault"
 CONFIG_PATH = PROJECT_ROOT / "config"
 NEEDS_ACTION_PATH = VAULT_PATH / "Needs_Action"
 LOGS_PATH = VAULT_PATH / "Logs"
 WHATSAPP_DATA_DIR = CONFIG_PATH / "whatsapp_data"
+WHATSAPP_QUEUE_PATH = VAULT_PATH / "WhatsApp_Queue"
 
 # Polling configuration
-POLL_INTERVAL = int(os.getenv("WHATSAPP_POLL_INTERVAL", "30"))  # seconds
+POLL_INTERVAL = int(os.getenv("WHATSAPP_POLL_INTERVAL", "30"))
 DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 HEADLESS = os.getenv("WHATSAPP_HEADLESS", "false").lower() == "true"
+AUTO_REPLY_ENABLED = os.getenv("WHATSAPP_AUTO_REPLY", "false").lower() == "true"
 
 # Priority keywords
 PRIORITY_KEYWORDS = {
     "urgent": ["urgent", "asap", "emergency", "immediately", "critical"],
     "high": ["important", "invoice", "payment", "deadline", "meeting", "client"],
     "medium": ["question", "request", "update", "information", "follow-up"],
-    "low": ["thanks", "ok", "noted", "sure", "👍"]
+    "low": ["thanks", "ok", "noted", "sure"]
 }
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("WhatsAppWatcher")
 
-
 def ensure_directories():
-    """Ensure all required directories exist."""
-    for path in [NEEDS_ACTION_PATH, LOGS_PATH, WHATSAPP_DATA_DIR]:
+    for path in [NEEDS_ACTION_PATH, LOGS_PATH, WHATSAPP_DATA_DIR, WHATSAPP_QUEUE_PATH]:
         path.mkdir(parents=True, exist_ok=True)
 
-
-def determine_priority(message_text: str) -> str:
-    """Determine message priority based on keywords."""
+def determine_priority(message_text: str, is_known: bool = False) -> str:
     text = message_text.lower()
-
     for priority, keywords in PRIORITY_KEYWORDS.items():
         if any(kw in text for kw in keywords):
+            if is_known and priority == "medium":
+                return "high"
             return priority
-
     return "medium"
 
+def get_priority_emoji(priority: str, is_escalation: bool = False) -> str:
+    if is_escalation: return "!"
+    return {"urgent": "!!", "high": "!", "medium": "-", "low": "."}.get(priority, "-")
 
-def get_priority_emoji(priority: str) -> str:
-    """Get emoji for priority level."""
-    return {
-        "urgent": "🔴",
-        "high": "🟠",
-        "medium": "🟡",
-        "low": "🟢"
-    }.get(priority, "🟡")
-
+def redact_pii(text: str) -> str:
+    """Redact phone numbers from text."""
+    phone_pattern = r'\+?(\d[\d\s-]{8,}\d)'
+    return re.sub(phone_pattern, '[REDACTED]', text)
 
 def create_task_file(message_data: Dict[str, Any]) -> Optional[Path]:
-    """Create a markdown task file for the WhatsApp message."""
     try:
         sender = message_data.get("sender", "Unknown")
         message = message_data.get("message", "")
         timestamp = message_data.get("timestamp", datetime.now().isoformat())
         chat_name = message_data.get("chat_name", sender)
+        is_known = message_data.get("is_known", False)
 
-        # Determine priority
-        priority = determine_priority(message)
-        priority_emoji = get_priority_emoji(priority)
+        priority = determine_priority(message, is_known)
+        is_escalation = not is_known and priority in ["urgent", "high"]
+        priority_emoji = get_priority_emoji(priority, is_escalation)
 
-        # Generate filename
         time_str = datetime.now().strftime("%Y-%m-%d_%H-%M")
+        prefix = "ESCALATION" if is_escalation else "whatsapp"
         safe_sender = "".join(c if c.isalnum() or c in " -_" else "" for c in sender)[:30]
-        filename = f"{time_str}_whatsapp_{priority}_{safe_sender}.md"
+        filename = f"{time_str}_{prefix}_{priority}_{safe_sender}.md"
         filepath = NEEDS_ACTION_PATH / filename
 
-        # Truncate long messages
-        message_preview = message[:200] + "..." if len(message) > 200 else message
-
-        # Create markdown content
-        content = f"""# {priority_emoji} WhatsApp: {chat_name}
+        content = f"""# {priority_emoji} {prefix.upper()}: {chat_name}
 
 ## Metadata
 - **Source:** WhatsApp
 - **From:** {sender}
+- **Known Contact:** {"Yes" if is_known else "No"}
 - **Chat:** {chat_name}
-- **Time:** {timestamp}
 - **Priority:** {priority.upper()}
 - **Created:** {datetime.now().isoformat()}
 
@@ -124,313 +111,251 @@ def create_task_file(message_data: Dict[str, Any]) -> Optional[Path]:
 ---
 
 ## Suggested Actions
-- [ ] Read and understand the message
-- [ ] Determine if response is needed
-- [ ] Draft response (if applicable)
-- [ ] Mark as handled
-
----
-
-## Decision Required
-- [ ] **No action needed** - Archive this message
-- [ ] **Reply needed** - Draft response for approval
-- [ ] **Forward to human** - Requires immediate attention
-- [ ] **Schedule follow-up** - Set reminder for later
-
----
-
-## Notes
-_Add any notes or context here_
-
+- [ ] Read message
 """
+        if is_escalation:
+            content += "- [ ] URGENT: Verify identity\n"
+        
+        content += "- [ ] Respond if needed\n"
 
-        if DRY_RUN:
-            logger.info(f"[DRY RUN] Would create: {filepath}")
-            return None
-
+        if DRY_RUN: return None
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(content)
-
-        logger.info(f"Created task file: {filepath}")
         return filepath
-
     except Exception as e:
-        logger.error(f"Error creating task file: {e}")
+        logger.error(f"Error: {e}")
         return None
 
-
 def log_action(action: str, details: Dict[str, Any]):
-    """Log action to daily log file."""
-    log_entry = {
-        "timestamp": datetime.now().isoformat(),
-        "action": action,
-        "actor": "whatsapp_watcher",
-        **details
-    }
-
+    safe_details = {k: redact_pii(str(v)) if isinstance(v, str) else v for k, v in details.items()}
+    log_entry = {"timestamp": datetime.now().isoformat(), "action": action, **safe_details}
     log_file = LOGS_PATH / f"{datetime.now().strftime('%Y-%m-%d')}.json"
-
     logs = []
     if log_file.exists():
-        try:
-            logs = json.loads(log_file.read_text())
-        except json.JSONDecodeError:
-            logs = []
-
+        try: logs = json.loads(log_file.read_text())
+        except: logs = []
     logs.append(log_entry)
     log_file.write_text(json.dumps(logs, indent=2))
 
-
 class WhatsAppWatcher:
-    """WhatsApp Web watcher using Playwright."""
-
     def __init__(self):
+        self.playwright = None
         self.browser: Optional[Browser] = None
+        self.context: Optional[BrowserContext] = None
         self.page: Optional[Page] = None
-        self.processed_messages: set = set()
+        self.processed_messages = set()
         self.is_authenticated = False
 
     async def start(self):
-        """Start the browser and navigate to WhatsApp Web."""
+        """Initialize browser and log in to WhatsApp."""
         logger.info("Starting WhatsApp Watcher...")
-
         self.playwright = await async_playwright().start()
-
-        # Use persistent context to maintain login
-        self.browser = await self.playwright.chromium.launch_persistent_context(
+        
+        # Launch browser with persistence
+        # Note: launch_persistent_context returns a context, not a browser object in the traditional sense
+        self.context = await self.playwright.chromium.launch_persistent_context(
             user_data_dir=str(WHATSAPP_DATA_DIR),
             headless=HEADLESS,
-            args=[
-                '--disable-blink-features=AutomationControlled',
-                '--disable-dev-shm-usage',
-                '--no-sandbox'
-            ],
-            viewport={'width': 1280, 'height': 800},
-            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            args=["--no-sandbox", "--disable-setuid-sandbox"],
+            viewport={"width": 1280, "height": 800}
         )
-
-        # Get or create page
-        if self.browser.pages:
-            self.page = self.browser.pages[0]
-        else:
-            self.page = await self.browser.new_page()
-
-        # Navigate to WhatsApp Web
-        logger.info("Navigating to WhatsApp Web...")
-        await self.page.goto("https://web.whatsapp.com", wait_until="networkidle")
-        logger.info("Navigated to WhatsApp Web")
-
-        # Wait for either QR code or chat list
-        await self.wait_for_auth()
-
-    async def wait_for_auth(self):
-        """Wait for user to authenticate via QR code."""
+        
+        # Persistent context starts with one page
+        self.page = self.context.pages[0] if self.context.pages else await self.context.new_page()
+        
+        await self.page.goto("https://web.whatsapp.com")
+        
+        # Wait for authentication
         logger.info("Waiting for authentication...")
-        logger.info("Please scan the QR code if prompted...")
-
-        # Multiple possible selectors for logged-in state
-        auth_selectors = [
-            'div[data-testid="chat-list"]',
-            'div[aria-label="Chat list"]',
-            '#pane-side',
-            'div[data-testid="conversation-panel-wrapper"]',
-            'span[data-testid="menu"]'
-        ]
-
         try:
-            # Combined selector - any of these indicates logged in
-            combined_selector = ", ".join(auth_selectors)
-
-            # Wait up to 5 minutes for QR scan
-            await self.page.wait_for_selector(
-                combined_selector,
-                timeout=300000,  # 5 minutes to scan QR
-                state="visible"
-            )
+            # Check for main interface element (e.g., chat list)
+            await self.page.wait_for_selector('div[data-testid="chat-list-search"]', timeout=60000)
             self.is_authenticated = True
-            logger.info("Successfully authenticated with WhatsApp Web!")
-
-        except Exception as e:
-            logger.warning(f"Authentication timeout or error: {e}")
-            logger.info("Please scan the QR code in the browser window")
+            logger.info("✅ Authentication successful")
+        except Exception:
             self.is_authenticated = False
+            logger.warning("⚠️ Authentication failed or QR code needed")
+            # Notification logic (FR-005)
+            self._notify_auth_needed()
 
-            # Create alert task for user
-            create_task_file({
-                "sender": "System",
-                "chat_name": "WhatsApp Watcher Alert",
-                "message": "WhatsApp Web requires authentication. Please scan the QR code in the browser window to continue monitoring.",
-                "timestamp": datetime.now().isoformat()
-            })
+    def _notify_auth_needed(self):
+        """Notify user that authentication is required."""
+        # Create a task in Needs_Action
+        alert_file = NEEDS_ACTION_PATH / f"ALERT_WhatsApp_Auth_{datetime.now().strftime('%H%M')}.md"
+        content = """# ⚠️ WhatsApp Authentication Required
+
+The WhatsApp Watcher cannot log in. 
+
+## Action Required
+1. Open the server VNC/Display
+2. Scan the QR code on the WhatsApp Web window
+3. Or restart the watcher in non-headless mode
+
+**Status:** Critical - Messaging Halted
+"""
+        with open(alert_file, 'w') as f:
+            f.write(content)
+        logger.warning("Created auth alert task")
 
     async def get_unread_chats(self) -> List[Dict[str, Any]]:
-        """Get list of chats with unread messages."""
+        """Scan for unread messages."""
         if not self.is_authenticated:
             return []
-
-        unread_messages = []
-
+            
+        messages = []
         try:
-            # Find chats with unread indicators
-            unread_badges = await self.page.query_selector_all(
-                'span[data-testid="icon-unread-count"]'
-            )
-
-            for badge in unread_badges:
+            # Look for unread badges
+            unread_selectors = await self.page.query_selector_all('span[aria-label*="unread"]')
+            
+            for badge in unread_selectors:
                 try:
-                    # Get parent chat element
-                    chat_element = await badge.evaluate_handle(
-                        'el => el.closest(\'div[data-testid="cell-frame-container"]\')'
-                    )
-
-                    if chat_element:
-                        # Extract chat info
-                        chat_name_el = await chat_element.query_selector(
-                            'span[data-testid="cell-frame-title"]'
-                        )
-                        last_msg_el = await chat_element.query_selector(
-                            'span[data-testid="last-msg-status"]'
-                        )
-
-                        chat_name = await chat_name_el.inner_text() if chat_name_el else "Unknown"
-                        last_msg = await last_msg_el.inner_text() if last_msg_el else ""
-
-                        # Create message ID to track processed messages
-                        msg_id = f"{chat_name}_{last_msg[:50]}"
-
-                        if msg_id not in self.processed_messages:
-                            unread_messages.append({
-                                "chat_name": chat_name,
-                                "sender": chat_name,
-                                "message": last_msg,
-                                "timestamp": datetime.now().isoformat(),
-                                "msg_id": msg_id
-                            })
-
+                    # Get parent container to find chat name
+                    parent = await badge.evaluate_handle('el => el.closest("div[role=\'listitem\']")')
+                    if not parent: continue
+                    
+                    chat_name_el = await parent.query_selector('span[title]')
+                    chat_name = await chat_name_el.get_attribute('title') if chat_name_el else "Unknown"
+                    
+                    messages.append({
+                        "sender": chat_name,
+                        "chat_name": chat_name,
+                        "message": "New unread messages detected",
+                        "timestamp": datetime.now().isoformat(),
+                        "is_known: contact": is_known_contact(chat_name),
+                        "msg_id": f"{chat_name}_{datetime.now().timestamp()}"
+                    })
                 except Exception as e:
-                    logger.debug(f"Error processing chat element: {e}")
-                    continue
-
+                    logger.warning(f"Error processing unread badge: {e}")
+                    
         except Exception as e:
-            logger.error(f"Error getting unread chats: {e}")
+            logger.error(f"Error scanning unread chats: {e}")
+            
+        return messages
 
-        return unread_messages
+    async def _send_message(self, chat_name: str, text: str) -> bool:
+        """Send a message to a specific chat (active sending)."""
+        if DRY_RUN:
+            logger.info(f"[DRY RUN] Would send to {chat_name}: {text}")
+            return True
 
-    async def check_session_valid(self) -> bool:
-        """Check if WhatsApp Web session is still valid."""
+        if not self.is_authenticated:
+            logger.error("Cannot send: Not authenticated")
+            return False
+
         try:
-            # Check for QR code (indicates logged out) - multiple possible selectors
-            qr_selectors = [
-                'canvas[aria-label="Scan me!"]',
-                'div[data-testid="qrcode"]',
-                'canvas[aria-label="Scan this QR code to link a device!"]'
-            ]
-            qr_code = None
-            for selector in qr_selectors:
-                qr_code = await self.page.query_selector(selector)
-                if qr_code:
-                    break
-            if qr_code:
-                self.is_authenticated = False
-                logger.warning("Session expired - QR code detected")
-                return False
+            # Search for chat
+            search_box = 'div[contenteditable="true"][data-tab="3"]'
+            
+            # Wait for search box
+            await self.page.wait_for_selector(search_box, timeout=5000)
+            
+            await self.page.fill(search_box, chat_name)
+            await asyncio.sleep(2) # Wait for search results
+            await self.page.press(search_box, "Enter")
+            await asyncio.sleep(1)
 
-            # Check for chat list (indicates logged in) - multiple selectors
-            chat_selectors = [
-                'div[data-testid="chat-list"]',
-                'div[aria-label="Chat list"]',
-                '#pane-side',
-                'span[data-testid="menu"]'
-            ]
-            for selector in chat_selectors:
-                chat_list = await self.page.query_selector(selector)
-                if chat_list:
-                    return True
-            return False
+            # Type message
+            input_selector = 'div[contenteditable="true"][data-tab="10"]' 
+            try:
+                await self.page.wait_for_selector(input_selector, timeout=5000)
+            except:
+                # Fallback
+                input_selector = 'div[data-testid="conversation-compose-box-input"]'
+                await self.page.wait_for_selector(input_selector, timeout=5000)
 
+            await self.page.fill(input_selector, text)
+            await asyncio.sleep(0.5)
+            await self.page.press(input_selector, "Enter")
+            
+            logger.info(f"Sent message to {chat_name}")
+            return True
         except Exception as e:
-            logger.error(f"Error checking session: {e}")
+            logger.error(f"Failed to send message to {chat_name}: {e}")
             return False
+
+    async def process_outbox(self):
+        """Process messages in the WhatsApp Queue."""
+        if not self.is_authenticated: return
+
+        queue_files = list(WHATSAPP_QUEUE_PATH.glob("SEND_*.md"))
+        for file in queue_files:
+            try:
+                content = file.read_text(encoding='utf-8')
+                
+                recipient = None
+                message_body = content
+                
+                # Check for frontmatter
+                if content.startswith("---"):
+                    try:
+                        parts = content.split("---", 2)
+                        if len(parts) >= 3:
+                            yaml_content = parts[1]
+                            body_content = parts[2].strip()
+                            
+                            for line in yaml_content.splitlines():
+                                if line.startswith("to:"):
+                                    recipient = line.split(":", 1)[1].strip()
+                            
+                            message_body = body_content
+                    except:
+                        pass
+                
+                if not recipient:
+                    # Fallback to filename parsing
+                    match = re.search(r"SEND_to_(.*?)_\d+", file.name)
+                    if match:
+                        recipient = match.group(1).replace("_", " ")
+                
+                if recipient and message_body:
+                    logger.info(f"Processing outbox message to {recipient}")
+                    success = await self._send_message(recipient, message_body)
+                    
+                    if success:
+                        # Move to Done
+                        done_path = VAULT_PATH / "Done" / file.name
+                        file.rename(done_path)
+                        log_action("whatsapp_sent", {"recipient": recipient, "file": file.name})
+                    else:
+                        logger.warning(f"Failed to send to {recipient}")
+            except Exception as e:
+                logger.error(f"Error processing outbox file {file.name}: {e}")
 
     async def run(self):
-        """Main watcher loop."""
-        logger.info("=" * 50)
-        logger.info("WhatsApp Watcher Starting...")
-        logger.info(f"Poll Interval: {POLL_INTERVAL} seconds")
-        logger.info(f"Dry Run: {DRY_RUN}")
-        logger.info(f"Headless: {HEADLESS}")
-        logger.info("=" * 50)
-
         ensure_directories()
         await self.start()
-
+        logger.info(f"WhatsApp Watcher Running (Poll: {POLL_INTERVAL}s)")
+        
         while True:
             try:
-                # Check session validity
-                if not await self.check_session_valid():
-                    logger.warning("Session invalid, waiting for re-auth...")
-                    await self.wait_for_auth()
-                    continue
-
-                # Get unread messages
-                logger.debug("Checking for new messages...")
+                # 1. Process Incoming
                 unread = await self.get_unread_chats()
-
                 for msg in unread:
-                    msg_id = msg.get("msg_id")
-
-                    # Check priority keywords
-                    priority = determine_priority(msg.get("message", ""))
-
-                    # Only process high-priority messages or all if configured
-                    if priority in ["urgent", "high"] or os.getenv("WHATSAPP_ALL_MESSAGES", "false").lower() == "true":
-                        logger.info(f"Processing message from: {msg.get('chat_name')}")
-
+                    if msg.get("msg_id") not in self.processed_messages:
                         filepath = create_task_file(msg)
-
                         if filepath:
-                            self.processed_messages.add(msg_id)
-                            log_action("whatsapp_message_processed", {
-                                "chat": msg.get("chat_name"),
-                                "priority": priority,
-                                "task_file": str(filepath),
-                                "result": "success"
-                            })
-                    else:
-                        # Mark as processed but don't create task
-                        self.processed_messages.add(msg_id)
-                        logger.debug(f"Skipping low-priority message from: {msg.get('chat_name')}")
+                            self.processed_messages.add(msg.get("msg_id"))
+                            log_action("whatsapp_received", {"chat": msg.get("chat_name")})
+                
+                # 2. Process Outbox
+                await self.process_outbox()
 
-                # Clean up old processed IDs (keep last 500)
-                if len(self.processed_messages) > 500:
-                    self.processed_messages = set(list(self.processed_messages)[-500:])
-
-            except Exception as e:
-                logger.error(f"Error in main loop: {e}")
-                log_action("error", {
-                    "error": str(e),
-                    "result": "failure"
-                })
-
+            except Exception as e: 
+                logger.error(f"Loop Error: {e}")
+                
             await asyncio.sleep(POLL_INTERVAL)
-
-    async def stop(self):
-        """Stop the watcher and close browser."""
-        if self.browser:
-            await self.browser.close()
-        logger.info("WhatsApp Watcher stopped")
 
 
 async def main():
-    """Entry point."""
     watcher = WhatsAppWatcher()
-
     try:
         await watcher.run()
     except KeyboardInterrupt:
-        logger.info("Stopping WhatsApp Watcher...")
-        await watcher.stop()
-
+        logger.info("Stopping...")
+        if watcher.context:
+            await watcher.context.close()
+        elif watcher.browser:
+            await watcher.browser.close()
 
 if __name__ == "__main__":
     asyncio.run(main())

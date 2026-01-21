@@ -15,7 +15,23 @@
       "Bash(powershell -ExecutionPolicy Bypass -File:*)",
       "Bash(find:*)",
       "Bash(git rebase:*)",
-      "Bash(GIT_EDITOR=true git rebase:*)"
+      "Bash(GIT_EDITOR=true git rebase:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(where claude:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "mcp__serena__find_symbol",
+      "mcp__serena__search_for_pattern",
+      "Bash(npm run dev:*)",
+      "Bash(dir \"D:\\\\Hacathan_2\\\\*.ps1\" /b)",
+      "Bash(dir:*)",
+      "Bash(docker --version)",
+      "Bash(powershell:*)",
+      "Bash(docker pull:*)",
+      "Bash(docker run:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker exec:*)"
     ]
   }
 }

@@ -27,6 +27,25 @@ PENDING_APPROVAL_PATH = VAULT_PATH / "Pending_Approval"
 DONE_PATH = VAULT_PATH / "Done"
 ARCHIVE_PATH = VAULT_PATH / "Archive"
 
+# Import AI agent utility
+sys.path.append(str(PROJECT_ROOT / "src"))
+try:
+    from utils.ai_agent import invoke_agent
+except ImportError:
+    def invoke_agent(prompt, dry_run=False):
+        return False, "", "none"
+
+# ROI Values (Estimated dollars saved per action)
+ROI_VALUES = {
+    "file_detected": 1.0,
+    "email_sent": 2.0,
+    "task_completed": 1.5,
+    "plan_created": 5.0,
+    "linkedin_posted": 10.0,
+    "whatsapp_message": 1.5,
+    "error_recovery": 5.0
+}
+
 # Report configuration
 REPORT_DAYS = int(os.getenv("BRIEFING_DAYS", "7"))
 DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
@@ -43,6 +62,41 @@ def ensure_directories():
     """Ensure all required directories exist."""
     for path in [LOGS_PATH, VAULT_PATH]:
         path.mkdir(parents=True, exist_ok=True)
+
+
+def calculate_roi(entries: List[Dict[str, Any]]) -> float:
+    """Calculate the estimated ROI in dollars for the period."""
+    total_roi = 0.0
+    for entry in entries:
+        action = entry.get("action", "")
+        # Basic mapping
+        if action in ROI_VALUES:
+            total_roi += ROI_VALUES[action]
+        elif "success" in str(entry.get("result", "")).lower():
+            total_roi += 0.5 # Default success value
+    return total_roi
+
+
+def get_ai_narrative(report_text: str) -> str:
+    """Get a narrative summary of the report from an AI agent."""
+    prompt = f"""You are a senior executive assistant. Summarize this weekly FTE report for the CEO.
+Highlight key wins, concerns, and ROI. Be professional and concise.
+
+Report Metrics:
+{report_text[:2000]}
+
+Format:
+## Executive Narrative Summary
+[Your summary here]
+
+## Key Highlights
+- [Highlight 1]
+- [Highlight 2]
+"""
+    success, output, agent = invoke_agent(prompt)
+    if success:
+        return output
+    return "Narrative summary unavailable."
 
 
 def get_date_range() -> tuple:
@@ -183,6 +237,7 @@ def generate_briefing_report(
     total_tasks = sum(sources.values())
     total_errors = len(errors)
     total_pending = len(pending)
+    roi = calculate_roi(entries)
 
     # Determine overall status
     if total_errors > 5:
@@ -195,6 +250,34 @@ def generate_briefing_report(
         status_emoji = "🟢"
         status_text = "Operating Normally"
 
+    # Fetch Odoo Financials (New)
+    financials = {}
+    try:
+        # Import Odoo MCP here to avoid circular imports or early failure if not setup
+        sys.path.append(str(PROJECT_ROOT))
+        from src.mcp_servers.odoo_server import get_financial_summary
+        
+        fin_start = start_date.strftime('%Y-%m-%d')
+        fin_end = end_date.strftime('%Y-%m-%d')
+        financials = get_financial_summary(date_from=fin_start, date_to=fin_end)
+        logger.info("Retrieved Odoo financial summary")
+    except Exception as e:
+        logger.warning(f"Could not fetch Odoo financials: {e}")
+        financials = {"error": "Financial data unavailable (Odoo offline or unconfigured)"}
+
+    # Pre-report for AI summary
+    pre_report = f"""
+Period: {start_date.date()} to {end_date.date()}
+Total Activities: {total_tasks}
+Success Rate: {((total_tasks - total_errors)/total_tasks*100) if total_tasks > 0 else 0:.1f}%
+Estimated ROI: ${roi:.2f}
+Errors: {total_errors}
+Pending: {total_pending}
+Top Actions: {dict(sorted(actions.items(), key=lambda x: x[1], reverse=True)[:5])}
+Financials: {json.dumps(financials)}
+"""
+    ai_summary = get_ai_narrative(pre_report)
+
     report = f"""# {status_emoji} CEO Weekly Briefing
 
 **Report Period:** {start_date.strftime('%B %d, %Y')} - {end_date.strftime('%B %d, %Y')}
@@ -203,16 +286,45 @@ def generate_briefing_report(
 
 ---
 
-## Executive Summary
+{ai_summary}
+
+---
+
+## Financial Performance (Odoo)
+
+"""
+    if "error" in financials:
+        report += f"> ⚠️ **Note:** {financials['error']}\n"
+    else:
+        revenue = financials.get('revenue', 0.0)
+        expenses = financials.get('expenses', 0.0)
+        profit = financials.get('profit', 0.0)
+        margin = financials.get('profit_margin', 0.0)
+        
+        report += f"""| Metric | Amount |
+|--------|--------|
+| **Revenue** | **${revenue:,.2f}** |
+| Expenses | ${expenses:,.2f} |
+| **Net Profit** | **${profit:,.2f}** |
+| Margin | {margin:.1f}% |
+
+*Based on {financials.get('invoice_count', 0)} invoices and {financials.get('bill_count', 0)} bills.*
+"""
+
+    report += f"""
+---
+
+## Operational Metrics
 
 Your Digital FTE processed **{total_tasks}** activities this week across all channels.
 
 | Metric | Value |
 |--------|-------|
 | Total Activities | {total_tasks} |
+| Estimated Time Savings | **${roi:.2f}** |
+| Success Rate | {((total_tasks - total_errors)/total_tasks*100) if total_tasks > 0 else 0:.1f}% |
 | Items Pending Action | {count_folder_items(NEEDS_ACTION_PATH)} |
 | Items Awaiting Approval | {count_folder_items(PENDING_APPROVAL_PATH)} |
-| Items Completed | {count_folder_items(DONE_PATH)} |
 | Errors Encountered | {total_errors} |
 
 ---
@@ -373,6 +485,17 @@ def save_briefing(report: str) -> Optional[Path]:
 
 def main():
     """Main entry point."""
+    global REPORT_DAYS, DRY_RUN
+    import argparse
+    parser = argparse.ArgumentParser(description="CEO Briefing Generator")
+    parser.add_argument("--days", type=int, default=REPORT_DAYS, help="Number of days to report")
+    parser.add_argument("--email", type=str, help="Email address to send the report to")
+    parser.add_argument("--dry-run", action="store_true", help="Don't save or send anything")
+    args = parser.parse_args()
+
+    REPORT_DAYS = args.days
+    DRY_RUN = args.dry_run
+
     logger.info("=" * 50)
     logger.info("CEO Briefing Generator Starting...")
     logger.info(f"Report Period: {REPORT_DAYS} days")
@@ -403,10 +526,21 @@ def main():
     # Save report
     filepath = save_briefing(report)
 
+    # Email distribution (FR-005)
+    if args.email and not DRY_RUN:
+        logger.info(f"Sending report to {args.email}...")
+        try:
+            from mcp_servers.email_sender import _send_email_logic
+            subject = f"Weekly CEO Briefing - {datetime.now().strftime('%Y-%m-%d')}"
+            result = _send_email_logic(to=args.email, subject=subject, body=report)
+            logger.info(f"Email result: {result}")
+        except Exception as e:
+            logger.error(f"Failed to send email: {e}")
+
     if filepath:
         logger.info(f"CEO Briefing generated successfully: {filepath}")
     else:
-        logger.info("CEO Briefing generation complete (dry run or error)")
+        logger.info("CEO Briefing generation complete")
 
     logger.info("=" * 50)
 

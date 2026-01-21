@@ -18,7 +18,7 @@ import logging
 import mimetypes
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 try:
     from watchdog.observers import Observer
@@ -252,9 +252,22 @@ def log_action(action: str, details: Dict[str, Any]):
 class FileHandler(FileSystemEventHandler):
     """Handler for file system events."""
 
-    def __init__(self):
+    def __init__(self, rate_limit: int = 50):
         self.processed_files: Dict[str, float] = {}  # filepath -> timestamp
+        self.task_history: List[float] = [] # Timestamps of tasks created
+        self.rate_limit = rate_limit
         super().__init__()
+
+    def _check_rate_limit(self) -> bool:
+        """Check if we are within the hourly rate limit."""
+        current_time = time.time()
+        # Filter history for last hour (3600 seconds)
+        self.task_history = [t for t in self.task_history if current_time - t < 3600]
+        
+        if len(self.task_history) >= self.rate_limit:
+            logger.warning(f"Rate limit reached: {len(self.task_history)} tasks in the last hour")
+            return False
+        return True
 
     def on_created(self, event):
         """Handle file creation events."""
@@ -266,6 +279,10 @@ class FileHandler(FileSystemEventHandler):
         # Check if should ignore
         if should_ignore_file(filepath):
             logger.debug(f"Ignoring file: {filepath.name}")
+            return
+
+        # Check rate limit (FR-005)
+        if not self._check_rate_limit():
             return
 
         # Debounce - wait for file to finish copying
@@ -299,6 +316,7 @@ class FileHandler(FileSystemEventHandler):
         task_file = create_task_file(filepath)
 
         if task_file:
+            self.task_history.append(time.time())
             log_action("file_detected", {
                 "file_name": filepath.name,
                 "file_type": get_file_type_category(filepath),
@@ -315,23 +333,42 @@ class FileHandler(FileSystemEventHandler):
 
 def main():
     """Main entry point."""
+    import argparse
+    parser = argparse.ArgumentParser(description="Filesystem Watcher for Digital FTE")
+    parser.add_argument("--paths", nargs="+", help="Paths to watch")
+    parser.add_argument("--debounce", type=int, default=DEBOUNCE_SECONDS, help="Debounce seconds")
+    parser.add_argument("--rate-limit", type=int, default=50, help="Max tasks per hour")
+    args = parser.parse_args()
+
+    watch_paths = []
+    if args.paths:
+        watch_paths = [Path(p) for p in args.paths]
+    else:
+        watch_paths = [WATCH_FOLDER]
+
     logger.info("=" * 50)
     logger.info("Filesystem Watcher Starting...")
-    logger.info(f"Watch Folder: {WATCH_FOLDER}")
+    logger.info(f"Watch Folders: {[str(p) for p in watch_paths]}")
     logger.info(f"Dry Run: {DRY_RUN}")
-    logger.info(f"Debounce: {DEBOUNCE_SECONDS}s")
+    logger.info(f"Debounce: {args.debounce}s")
+    logger.info(f"Rate Limit: {args.rate_limit}/hour")
     logger.info("=" * 50)
 
     ensure_directories()
 
     # Create observer
-    event_handler = FileHandler()
+    event_handler = FileHandler(rate_limit=args.rate_limit)
     observer = Observer()
-    observer.schedule(event_handler, str(WATCH_FOLDER), recursive=False)
+    
+    for path in watch_paths:
+        if path.exists():
+            observer.schedule(event_handler, str(path), recursive=False)
+            logger.info(f"Watching folder: {path}")
+        else:
+            logger.warning(f"Watch path does not exist: {path}")
 
     # Start observer
     observer.start()
-    logger.info(f"Watching folder: {WATCH_FOLDER}")
 
     try:
         while True:

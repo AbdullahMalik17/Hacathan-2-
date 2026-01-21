@@ -1,8 +1,16 @@
 'use server'
 
-import { getPendingTasks, getCompletedTasks, createTask, getSkills } from '@/lib/vault';
+import { getPendingTasks, getCompletedTasks, createTask, getSkills, getLogs, getLatestFinancials } from '@/lib/vault';
 import type { Task, Skill } from '@/types';
 import { revalidatePath } from 'next/cache';
+
+export async function fetchFinancials() {
+  return await getLatestFinancials();
+}
+
+export async function fetchLogs() {
+  return await getLogs();
+}
 
 export async function fetchTasks(): Promise<{ pending: Task[], completed: Task[] }> {
   const [pending, completed] = await Promise.all([

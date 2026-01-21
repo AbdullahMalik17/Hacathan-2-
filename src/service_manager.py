@@ -46,6 +46,12 @@ SERVICES = {
         "cwd": str(BASE_DIR),
         "restart_delay": 5,
         "description": "Task orchestrator with Ralph Wiggum loop (Skill)"
+    },
+    "vault-sync": {
+        "command": [sys.executable, "src/utils/vault_sync.py"],
+        "cwd": str(BASE_DIR),
+        "restart_delay": 60,
+        "description": "Git-based vault synchronization (Platinum Tier)"
     }
 }
 

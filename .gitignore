@@ -48,13 +48,15 @@ config/processed_emails.json
 config/hook_state.json
 config/current_prompt.txt
 
-# Logs (optional - comment out to track logs)
-# Vault/Logs/*.json
-# Vault/Logs/*.log
+# Logs
+Vault/Logs/*.json
+Vault/Logs/*.log
+Vault/Needs_Action/ALERT_*.md
 
 # OS files
 .DS_Store
 Thumbs.db
+nul
 
 # Test coverage
 htmlcov/
@@ -79,3 +81,4 @@ config/linkedin_data/
 # Frontend
 frontend/node_modules/
 frontend/.next/
+node_modules/

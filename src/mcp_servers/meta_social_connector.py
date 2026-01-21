@@ -547,5 +547,27 @@ def generate_summary(platform: str, period: str = "weekly") -> str:
         return f"Error generating summary: {str(e)}"
 
 
+@mcp.tool()
+def get_page_info() -> str:
+    """
+    Get basic information about the configured Facebook Page.
+
+    Returns:
+        JSON string with page details
+    """
+    if not META_ACCESS_TOKEN or not FACEBOOK_PAGE_ID:
+        return json.dumps({"error": "Facebook credentials not configured"})
+
+    try:
+        client = MetaAPIClient(META_ACCESS_TOKEN, GRAPH_API_VERSION)
+        endpoint = f"{FACEBOOK_PAGE_ID}"
+        params = {"fields": "name,about,fan_count,followers_count,verification_status"}
+        
+        info = client._make_request("GET", endpoint, data=params)
+        return json.dumps(info, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
 if __name__ == "__main__":
     mcp.run()

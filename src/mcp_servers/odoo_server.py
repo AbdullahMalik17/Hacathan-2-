@@ -560,6 +560,110 @@ def list_recent_bills(limit: int = 10) -> List[Dict[str, Any]]:
         raise
 
 
+@mcp.tool()
+def list_products(
+    limit: int = 20, 
+    domain: str = None
+) -> List[Dict[str, Any]]:
+    """
+    List products from Odoo.
+
+    Args:
+        limit: Maximum number of products to return
+        domain: Optional search domain (e.g. name of product)
+
+    Returns:
+        List of products with id, name, list_price, type
+    """
+    try:
+        odoo = get_odoo()
+        
+        search_domain = []
+        if domain:
+            search_domain = [('name', 'ilike', domain)]
+            
+        product_ids = odoo.search('product.product', search_domain, limit=limit)
+        products = odoo.read('product.product', product_ids, ['name', 'list_price', 'type', 'default_code'])
+        
+        result = []
+        for p in products:
+            result.append({
+                'id': p['id'],
+                'name': p['name'],
+                'price': p['list_price'],
+                'type': p['type'],
+                'code': p['default_code'] or ''
+            })
+            
+        return result
+    except Exception as e:
+        logger.error(f"Failed to list products: {e}")
+        raise
+
+
+@mcp.tool()
+def get_partner_details(partner_name: str) -> Dict[str, Any]:
+    """
+    Get details of a partner (customer/vendor).
+
+    Args:
+        partner_name: Name of the partner to search for
+
+    Returns:
+        Dictionary with partner details
+    """
+    try:
+        odoo = get_odoo()
+        
+        partner_ids = odoo.search('res.partner', [('name', 'ilike', partner_name)], limit=1)
+        if not partner_ids:
+            return {"error": "Partner not found"}
+            
+        partner = odoo.read('res.partner', partner_ids, ['name', 'email', 'phone', 'street', 'city', 'country_id'])[0]
+        
+        return {
+            'id': partner['id'],
+            'name': partner['name'],
+            'email': partner['email'],
+            'phone': partner['phone'],
+            'address': f"{partner['street'] or ''}, {partner['city'] or ''}",
+            'country': partner['country_id'][1] if partner['country_id'] else ''
+        }
+    except Exception as e:
+        logger.error(f"Failed to get partner details: {e}")
+        raise
+
+
+@mcp.tool()
+def check_connection() -> Dict[str, Any]:
+    """
+    Check connection to Odoo server.
+    
+    Returns:
+        Dictionary with connection status and server version info
+    """
+    try:
+        odoo = get_odoo()
+        
+        # Get server version info
+        version_info = odoo.common.version()
+        
+        return {
+            "status": "connected",
+            "url": ODOO_URL,
+            "database": ODOO_DB,
+            "user_id": odoo.uid,
+            "server_version": version_info.get("server_version"),
+            "protocol_version": version_info.get("protocol_version")
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "url": ODOO_URL
+        }
+
+
 if __name__ == "__main__":
     # Run the MCP server
     mcp.run()

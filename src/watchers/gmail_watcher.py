@@ -33,7 +33,11 @@ except ImportError:
     sys.exit(1)
 
 # Configuration
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+SCOPES = [
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.modify',  # For labels
+    'https://www.googleapis.com/auth/gmail.send'     # For auto-replies
+]
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 VAULT_PATH = PROJECT_ROOT / "Vault"
 CONFIG_PATH = PROJECT_ROOT / "config"
@@ -46,13 +50,52 @@ LOGS_PATH = VAULT_PATH / "Logs"
 POLL_INTERVAL = int(os.getenv("GMAIL_POLL_INTERVAL", "60"))  # seconds
 DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 
-# Priority keywords
-PRIORITY_KEYWORDS = {
-    "urgent": ["urgent", "asap", "emergency", "deadline today", "immediate"],
-    "high": ["important", "invoice", "payment", "meeting", "client", "deadline"],
-    "medium": ["question", "request", "update", "information", "follow-up"],
-    "low": ["newsletter", "notification", "subscription", "digest", "weekly"]
+# AI Exclusion Label
+AI_EXCLUSION_LABEL = "NO_AI"  # Emails with this label will be skipped
+
+# Importance classification (3-tier system)
+IMPORTANCE_KEYWORDS = {
+    "important": [
+        # Security & Financial
+        "urgent", "asap", "emergency", "security alert", "breach", "fraud",
+        "payment due", "invoice due", "deadline today", "immediate action",
+        # Business Critical
+        "client emergency", "production down", "outage", "critical bug",
+        "meeting today", "interview", "presentation",
+        # Legal & Compliance
+        "legal notice", "court", "lawsuit", "compliance", "audit"
+    ],
+    "medium": [
+        "important", "invoice", "payment", "meeting", "client",
+        "deadline", "question", "request", "update", "information",
+        "follow-up", "review", "approval needed", "action required"
+    ],
+    "not_important": [
+        "newsletter", "notification", "subscription", "digest", "weekly",
+        "monthly report", "promotional", "unsubscribe", "marketing",
+        "social media", "linkedin", "facebook", "twitter"
+    ]
 }
+
+# Auto-reply configuration
+AUTO_REPLY_ENABLED = os.getenv("AUTO_REPLY_ENABLED", "false").lower() == "true"
+AUTO_REPLY_IMPORTANT_ONLY = True  # Only auto-reply to important emails
+
+# Known sender domains (for importance scoring)
+KNOWN_IMPORTANT_DOMAINS = {
+    # Add your important domains here
+    "client.com": "important",
+    "bank.com": "important",
+    "lawyer.com": "important",
+    "malikmuhammadathar5@gmail.com" : "important",
+    "[EMAIL_ADDRESS]" : "important",
+    # Medium importance
+    "vendor.com": "medium",
+    "partner.com": "medium"
+}
+
+# Known senders file
+KNOWN_SENDERS_FILE = CONFIG_PATH / "known_senders.json"
 
 # Setup logging (initially just console, file handler added in main())
 logging.basicConfig(
@@ -104,15 +147,107 @@ def get_gmail_service():
     return build('gmail', 'v1', credentials=creds)
 
 
-def determine_priority(subject: str, snippet: str) -> str:
-    """Determine email priority based on keywords."""
+def load_known_senders() -> Dict[str, Dict[str, Any]]:
+    """Load known sender reputation data."""
+    if KNOWN_SENDERS_FILE.exists():
+        with open(KNOWN_SENDERS_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+
+def save_known_senders(senders: Dict[str, Dict[str, Any]]):
+    """Save known sender reputation data."""
+    with open(KNOWN_SENDERS_FILE, 'w') as f:
+        json.dump(senders, f, indent=2)
+
+
+def update_sender_reputation(sender_email: str, importance: str):
+    """Update sender reputation based on classification."""
+    senders = load_known_senders()
+
+    if sender_email not in senders:
+        senders[sender_email] = {
+            "first_seen": datetime.now().isoformat(),
+            "email_count": 0,
+            "importance_history": []
+        }
+
+    senders[sender_email]["email_count"] += 1
+    senders[sender_email]["last_seen"] = datetime.now().isoformat()
+    senders[sender_email]["importance_history"].append(importance)
+
+    # Keep only last 10 classifications
+    if len(senders[sender_email]["importance_history"]) > 10:
+        senders[sender_email]["importance_history"] = senders[sender_email]["importance_history"][-10:]
+
+    save_known_senders(senders)
+
+
+def get_sender_domain(sender: str) -> str:
+    """Extract domain from sender email."""
+    if '<' in sender and '>' in sender:
+        sender = sender[sender.find('<')+1:sender.find('>')]
+    if '@' in sender:
+        return sender.split('@')[1].lower()
+    return ""
+
+
+def determine_importance(subject: str, snippet: str, sender: str) -> str:
+    """
+    Determine email importance using 3-tier system:
+    - important: Requires immediate attention and auto-reply
+    - medium: Review within 24 hours
+    - not_important: Can be archived or reviewed later
+    """
     text = f"{subject} {snippet}".lower()
 
-    for priority, keywords in PRIORITY_KEYWORDS.items():
-        if any(kw in text for kw in keywords):
-            return priority
+    # Check sender domain reputation
+    domain = get_sender_domain(sender)
+    if domain in KNOWN_IMPORTANT_DOMAINS:
+        domain_importance = KNOWN_IMPORTANT_DOMAINS[domain]
+        logger.debug(f"Domain {domain} marked as {domain_importance}")
+        if domain_importance == "important":
+            return "important"
 
+    # Check known sender history
+    sender_email = sender
+    if '<' in sender and '>' in sender:
+        sender_email = sender[sender.find('<')+1:sender.find('>')]
+
+    known_senders = load_known_senders()
+    if sender_email in known_senders:
+        history = known_senders[sender_email].get("importance_history", [])
+        if history:
+            # If sender was important 3+ times out of last 10, consider important
+            important_count = history.count("important")
+            if important_count >= 3:
+                logger.debug(f"Sender {sender_email} has {important_count}/10 important emails")
+                return "important"
+
+    # Keyword-based classification (prioritized)
+    for importance, keywords in IMPORTANCE_KEYWORDS.items():
+        if any(kw in text for kw in keywords):
+            logger.debug(f"Matched keyword for {importance}: {text[:100]}")
+            return importance
+
+    # Default to medium
     return "medium"
+
+
+def determine_priority(subject: str, snippet: str) -> str:
+    """
+    DEPRECATED: Use determine_importance() instead.
+    Kept for backward compatibility.
+    """
+    text = f"{subject} {snippet}".lower()
+
+    # Map old priority to new importance
+    if any(kw in text for kw in IMPORTANCE_KEYWORDS.get("important", [])):
+        return "urgent"
+    elif any(kw in text for kw in IMPORTANCE_KEYWORDS.get("medium", [])):
+        return "medium"
+    else:
+        return "low"
 
 
 def get_priority_emoji(priority: str) -> str:
@@ -121,8 +256,131 @@ def get_priority_emoji(priority: str) -> str:
         "urgent": "🔴",
         "high": "🟠",
         "medium": "🟡",
-        "low": "🟢"
+        "low": "🟢",
+        "important": "🔴",
+        "not_important": "🟢"
     }.get(priority, "🟡")
+
+
+def has_exclusion_label(email_data: Dict[str, Any]) -> bool:
+    """Check if email has the NO_AI label."""
+    label_ids = email_data.get('labelIds', [])
+
+    # Check if NO_AI label exists (case-insensitive match)
+    for label_id in label_ids:
+        if AI_EXCLUSION_LABEL.lower() in label_id.lower():
+            return True
+
+    return False
+
+
+def generate_auto_reply(subject: str, sender: str, importance: str) -> str:
+    """Generate automatic reply based on Company Handbook rules."""
+
+    # Extract sender name
+    sender_name = "there"
+    if '<' in sender:
+        sender_name = sender[:sender.find('<')].strip()
+
+    reply_templates = {
+        "important": f"""Hi {sender_name},
+
+Thank you for your message regarding "{subject}".
+
+I've received your email and marked it as high priority. I'm reviewing it now and will respond with a detailed reply within the next hour.
+
+If this is extremely urgent, please feel free to call me directly.
+
+Best regards,
+Abdullah Junior
+(Automated Response - Digital FTE)""",
+
+        "medium": f"""Hi {sender_name},
+
+Thank you for your email about "{subject}".
+
+I've received your message and will review it shortly. You can expect a response within 24 hours.
+
+If this requires immediate attention, please reply with "URGENT" in the subject line.
+
+Best regards,
+Abdullah Junior
+(Automated Response - Digital FTE)"""
+    }
+
+    return reply_templates.get(importance, reply_templates["medium"])
+
+
+def send_auto_reply(service, email_data: Dict[str, Any], importance: str) -> bool:
+    """Send automatic reply to email."""
+    try:
+        headers = {h['name']: h['value'] for h in email_data['payload']['headers']}
+        subject = headers.get('Subject', 'No Subject')
+        sender = headers.get('From', '')
+        message_id = headers.get('Message-ID', '')
+
+        # Generate reply
+        reply_body = generate_auto_reply(subject, sender, importance)
+
+        # Create reply message
+        from email.mime.text import MIMEText
+        message = MIMEText(reply_body)
+        message['to'] = sender
+        message['subject'] = f"Re: {subject}"
+        if message_id:
+            message['In-Reply-To'] = message_id
+            message['References'] = message_id
+
+        # Encode message
+        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
+
+        # Send via Gmail API
+        send_message = {'raw': raw_message}
+        service.users().messages().send(userId='me', body=send_message).execute()
+
+        logger.info(f"Auto-reply sent to: {sender}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to send auto-reply: {e}")
+        return False
+
+
+def create_auto_reply_draft(service, email_data: Dict[str, Any], importance: str) -> Optional[str]:
+    """Create draft reply for approval (safer than auto-send)."""
+    try:
+        headers = {h['name']: h['value'] for h in email_data['payload']['headers']}
+        subject = headers.get('Subject', 'No Subject')
+        sender = headers.get('From', '')
+        message_id = headers.get('Message-ID', '')
+
+        # Generate reply
+        reply_body = generate_auto_reply(subject, sender, importance)
+
+        # Create draft message
+        from email.mime.text import MIMEText
+        message = MIMEText(reply_body)
+        message['to'] = sender
+        message['subject'] = f"Re: {subject}"
+        if message_id:
+            message['In-Reply-To'] = message_id
+            message['References'] = message_id
+
+        # Encode message
+        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
+
+        # Create draft
+        draft = {
+            'message': {'raw': raw_message}
+        }
+        draft_obj = service.users().drafts().create(userId='me', body=draft).execute()
+
+        logger.info(f"Draft created for: {sender} (ID: {draft_obj['id']})")
+        return draft_obj['id']
+
+    except Exception as e:
+        logger.error(f"Failed to create draft: {e}")
+        return None
 
 
 def extract_email_body(payload: Dict[str, Any]) -> str:
@@ -149,7 +407,7 @@ def extract_email_body(payload: Dict[str, Any]) -> str:
     return body
 
 
-def create_task_file(email_data: Dict[str, Any]) -> Optional[Path]:
+def create_task_file(email_data: Dict[str, Any], importance: str = None) -> Optional[Path]:
     """Create a markdown task file for the email."""
     try:
         msg_id = email_data['id']
@@ -160,9 +418,19 @@ def create_task_file(email_data: Dict[str, Any]) -> Optional[Path]:
         date = headers.get('Date', datetime.now().isoformat())
         snippet = email_data.get('snippet', '')
 
-        # Determine priority
-        priority = determine_priority(subject, snippet)
-        priority_emoji = get_priority_emoji(priority)
+        # Determine importance (use provided or calculate)
+        if importance is None:
+            importance = determine_importance(subject, snippet, sender)
+
+        importance_emoji = get_priority_emoji(importance)
+
+        # Extract sender email for reputation tracking
+        sender_email = sender
+        if '<' in sender and '>' in sender:
+            sender_email = sender[sender.find('<')+1:sender.find('>')]
+
+        # Update sender reputation
+        update_sender_reputation(sender_email, importance)
 
         # Extract body
         body = extract_email_body(email_data['payload'])
@@ -170,19 +438,40 @@ def create_task_file(email_data: Dict[str, Any]) -> Optional[Path]:
         # Generate filename
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
         safe_subject = "".join(c if c.isalnum() or c in " -_" else "" for c in subject)[:50]
-        filename = f"{timestamp}_gmail_{priority}_{safe_subject}.md"
+        filename = f"{timestamp}_gmail_{importance}_{safe_subject}.md"
         filepath = NEEDS_ACTION_PATH / filename
 
+        # Auto-reply suggestions
+        auto_reply_section = ""
+        if importance == "important":
+            auto_reply_section = f"""
+## 🤖 Auto-Reply Recommendation
+
+**Status:** Ready to send automatic acknowledgment
+**Template:** Important Email Response
+
+> I've received your email and marked it as high priority.
+> I'm reviewing it now and will respond within the next hour.
+
+**Actions:**
+- [ ] **Auto-send acknowledgment** (recommended for important emails)
+- [ ] **Draft for approval** (creates draft in Gmail)
+- [ ] **Skip auto-reply** (manual response only)
+
+---
+"""
+
         # Create markdown content
-        content = f"""# {priority_emoji} Email: {subject}
+        content = f"""# {importance_emoji} Email: {subject}
 
 ## Metadata
 - **Source:** Gmail
 - **From:** {sender}
 - **Date:** {date}
-- **Priority:** {priority.upper()}
+- **Importance:** {importance.upper()}
 - **Message ID:** {msg_id}
 - **Created:** {datetime.now().isoformat()}
+- **Sender Reputation:** {get_sender_domain(sender)}
 
 ---
 
@@ -195,7 +484,7 @@ def create_task_file(email_data: Dict[str, Any]) -> Optional[Path]:
 {body}
 
 ---
-
+{auto_reply_section}
 ## Suggested Actions
 - [ ] Read and understand the email
 - [ ] Determine if response is needed
@@ -249,13 +538,14 @@ def save_processed_ids(ids: set):
 
 
 def fetch_new_emails(service) -> List[Dict[str, Any]]:
-    """Fetch new unread important emails."""
+    """Fetch new unread emails, excluding NO_AI labeled ones."""
     try:
-        # Query for unread, important emails in inbox
+        # Query for unread emails in inbox (removed is:important to catch all)
+        # We'll determine importance ourselves
         results = service.users().messages().list(
             userId='me',
-            q='is:unread is:important in:inbox',
-            maxResults=10
+            q='is:unread in:inbox',
+            maxResults=20  # Increased to catch more emails
         ).execute()
 
         messages = results.get('messages', [])
@@ -276,6 +566,13 @@ def fetch_new_emails(service) -> List[Dict[str, Any]]:
                     id=msg['id'],
                     format='full'
                 ).execute()
+
+                # Check for NO_AI label exclusion
+                if has_exclusion_label(full_msg):
+                    logger.info(f"Skipping email {msg['id']} - has {AI_EXCLUSION_LABEL} label")
+                    processed_ids.add(msg['id'])  # Mark as processed to skip in future
+                    continue
+
                 new_emails.append(full_msg)
 
         return new_emails
@@ -350,17 +647,37 @@ def main():
                 msg_id = email['id']
                 headers = {h['name']: h['value'] for h in email['payload']['headers']}
                 subject = headers.get('Subject', 'No Subject')
+                sender = headers.get('From', 'Unknown')
+                snippet = email.get('snippet', '')
 
-                logger.info(f"Processing: {subject}")
+                # Determine importance
+                importance = determine_importance(subject, snippet, sender)
 
-                filepath = create_task_file(email)
+                logger.info(f"Processing [{importance.upper()}]: {subject} from {sender}")
+
+                # Create task file
+                filepath = create_task_file(email, importance)
+
+                # Handle auto-reply for important emails
+                draft_id = None
+                if filepath and importance == "important":
+                    if AUTO_REPLY_ENABLED:
+                        # Create draft for approval (safer than auto-send)
+                        draft_id = create_auto_reply_draft(service, email, importance)
+                        if draft_id:
+                            logger.info(f"✉️  Auto-reply draft created (ID: {draft_id})")
+                    else:
+                        logger.info(f"⏭️  Auto-reply disabled - skipping draft creation")
 
                 if filepath:
                     processed_ids.add(msg_id)
                     log_action("email_processed", {
                         "message_id": msg_id,
                         "subject": subject,
+                        "sender": sender,
+                        "importance": importance,
                         "task_file": str(filepath),
+                        "auto_reply_draft": draft_id,
                         "result": "success"
                     })
 

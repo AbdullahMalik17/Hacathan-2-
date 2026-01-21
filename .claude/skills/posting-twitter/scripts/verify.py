@@ -4,10 +4,14 @@
 import sys
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
-# Add project root to path
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+# Add project root to path (5 levels up from verify.py)
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+# Load environment variables
+load_dotenv(PROJECT_ROOT / "config" / ".env")
 
 
 def verify():
@@ -40,12 +44,12 @@ def verify():
             errors.append(f"Missing directory: Vault/{dir_name}")
 
     if errors:
-        print("✗ posting-twitter invalid:")
+        print("[FAIL] posting-twitter invalid:")
         for e in errors:
             print(f"  - {e}")
         return 1
 
-    print("✓ posting-twitter valid")
+    print("[OK] posting-twitter valid")
     return 0
 
 

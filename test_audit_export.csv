@@ -1,0 +1,7 @@
+timestamp,action,actor,domain,resource,status,approval_required,approved_by,error,duration_ms,details
+2026-01-18T11:37:40.152881,test.create_invoice,test_user,business,test_invoice_001,success,False,,,150,"{""amount"": 1500, ""customer"": ""Test Corp""}"
+2026-01-18T11:37:40.154473,test.record_expense,orchestrator,business,test_expense_001,success,False,,,75,"{""amount"": 50, ""category"": ""Office Supplies""}"
+2026-01-18T11:37:40.155423,test.send_email,email_sender,personal,email_123,failure,False,,SMTP connection failed,5000,{}
+2026-01-18T11:38:07.848993,test.create_invoice,test_user,business,test_invoice_001,success,False,,,150,"{""amount"": 1500, ""customer"": ""Test Corp""}"
+2026-01-18T11:38:07.850310,test.record_expense,orchestrator,business,test_expense_001,success,False,,,75,"{""amount"": 50, ""category"": ""Office Supplies""}"
+2026-01-18T11:38:07.852495,test.send_email,email_sender,personal,email_123,failure,False,,SMTP connection failed,5000,{}

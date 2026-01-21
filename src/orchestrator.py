@@ -29,6 +29,12 @@ LOGS_PATH = VAULT_PATH / "Logs"
 PLANS_PATH = VAULT_PATH / "Plans"
 CONFIG_PATH = PROJECT_ROOT / "config"
 LINKEDIN_QUEUE_PATH = VAULT_PATH / "LinkedIn_Queue"
+UPDATES_PATH = VAULT_PATH / "Updates"
+
+# Platinum Tier Specialization
+FTE_ROLE = os.getenv("FTE_ROLE", "local").lower()
+AGENT_ID = os.getenv("AGENT_ID", "local-01")
+IN_PROGRESS_PATH = VAULT_PATH / "In_Progress" / FTE_ROLE
 
 # Default settings
 DEFAULT_MAX_ITERATIONS = 5
@@ -43,7 +49,7 @@ AI_AGENTS = [
             "gemini.cmd",
             os.path.expandvars(r"%APPDATA%\\npm\\gemini.cmd"),
         ],
-        "prompt_flag": "",
+        "prompt_flag": "-p",
         "enabled": True
     },
     {
@@ -72,6 +78,15 @@ AI_AGENTS = [
             "github-copilot-cli",
             "copilot",
             "copilot.cmd",
+        ],
+        "prompt_flag": "-p",
+        "enabled": True
+    },
+    {
+        "name": "codex",
+        "commands": [
+            "codex",
+            "openai-codex",
         ],
         "prompt_flag": "-p",
         "enabled": True
@@ -154,7 +169,8 @@ class DigitalFTEOrchestrator:
     def _ensure_directories(self):
         """Ensure all required directories exist."""
         for path in [NEEDS_ACTION_PATH, PENDING_APPROVAL_PATH,
-                     APPROVED_PATH, DONE_PATH, LOGS_PATH, PLANS_PATH, LINKEDIN_QUEUE_PATH]:
+                     APPROVED_PATH, DONE_PATH, LOGS_PATH, PLANS_PATH, 
+                     LINKEDIN_QUEUE_PATH, IN_PROGRESS_PATH, UPDATES_PATH]:
             path.mkdir(parents=True, exist_ok=True)
 
     def _load_handbook(self) -> str:
@@ -238,32 +254,60 @@ JSON ONLY.
                 )
 
                 if result.returncode == 0:
+                    # ... existing success logic ...
                     # Parse JSON output
                     output = result.stdout.strip()
-                    # Clean markdown code blocks if present
-                    output = re.sub(r'^```json\s*', '', output)
-                    output = re.sub(r'^```\s*', '', output)
-                    output = re.sub(r'\s*```$', '', output)
                     
+                    # Robust JSON extraction: Find content between first { and last }
+                    json_match = re.search(r'(\{.*\})', output, re.DOTALL)
+                    if json_match:
+                        clean_output = json_match.group(1)
+                    else:
+                        clean_output = output
+
                     try:
-                        data = json.loads(output)
+                        data = json.loads(clean_output)
                         logger.info(f"{agent_name.upper()} returned valid JSON.")
                         return True, data, agent_name
                     except json.JSONDecodeError:
                         logger.warning(f"{agent_name.upper()} output invalid JSON: {output[:100]}...")
                         # Continue to next agent if JSON fails
                 else:
-                    logger.warning(f"{agent_name.upper()} failed (code {result.returncode}): {result.stderr[:200]}")
+                    logger.warning(f"{agent_name.upper()} failed (code {result.returncode})")
+                    logger.warning(f"STDERR: {result.stderr[:500]}")
+                    logger.warning(f"STDOUT: {result.stdout[:200]}")
 
             except Exception as e:
                 logger.warning(f"{agent_name.upper()} error: {e}")
 
         return False, {}, "all_failed"
 
+    def _claim_task(self, task_path: Path) -> Optional[Path]:
+        """Claim a task by moving it to the role-specific In_Progress folder."""
+        if not task_path.exists():
+            return None
+            
+        try:
+            target_path = IN_PROGRESS_PATH / task_path.name
+            # Atomic-like move: if it already exists in another agent's In_Progress, this fails or we check it
+            # But the primary race is from Needs_Action.
+            shutil.move(str(task_path), str(target_path))
+            logger.info(f"Claimed task: {task_path.name} -> {FTE_ROLE}")
+            return target_path
+        except Exception as e:
+            logger.debug(f"Failed to claim task {task_path.name}: {e}")
+            return None
+
     def process_task(self, task_path: Path) -> bool:
         """Process a task using Supervisor pattern."""
+        # 1. Claim-by-Move (Platinum FR-004)
+        claimed_path = self._claim_task(task_path)
+        if not claimed_path:
+            return False
+            
+        task_path = claimed_path # Use the new path in In_Progress
         task_id = task_path.name
-        logger.info(f"Processing Task: {task_id}")
+        logger.info(f"Processing Task: {task_id} (Role: {FTE_ROLE})")
 
         # Audit log: Task processing started
         log_audit(
@@ -339,8 +383,27 @@ JSON ONLY.
             return False
 
         # Execute decision
+        if isinstance(decision_data, list):
+            if decision_data:
+                decision_data = decision_data[0]
+            else:
+                decision_data = {}
+        
         target_folder = decision_data.get("target_folder")
         analysis = decision_data.get("analysis", "No analysis provided")
+
+        if not target_folder:
+            logger.warning(f"Agent did not provide target_folder. Data: {decision_data}")
+            # Fallback based on content or other fields? For now, log and fail.
+            # Maybe default to Needs_Action or retry?
+            # Let's try to interpret "decision" field if present
+            decision = decision_data.get("decision", "").upper()
+            if decision == "APPROVE":
+                target_folder = "Done"
+            elif decision == "NEEDS_APPROVAL":
+                target_folder = "Pending_Approval"
+            else:
+                return False
 
         logger.info(f"Agent Decision: Move to {target_folder}")
         logger.info(f"Analysis: {analysis}")
@@ -747,23 +810,38 @@ Output ONLY the markdown plan above. Do not add any other text."""
         logs.append(log_entry)
         log_file.write_text(json.dumps(logs, indent=2))
 
+    def process_updates(self):
+        """Process signal files from cloud instance."""
+        if UPDATES_PATH.exists():
+            updates = list(UPDATES_PATH.glob("*.md"))
+            for update in updates:
+                logger.info(f"Local merging update: {update.name}")
+                # For now, just move to Done or Archive after processing
+                # In a more advanced version, this would update Dashboard.md
+                self._move_task(update, DONE_PATH)
+
     def run(self):
         """Main loop."""
-        logger.info("Starting Supervisor Loop...")
+        logger.info(f"Starting Digital FTE Orchestrator Loop (Role: {FTE_ROLE})...")
         while True:
             try:
-                # Process LinkedIn queue (scheduler)
+                # 1. Process LinkedIn queue (Common)
                 self.process_linkedin_queue()
 
-                # Process pending tasks
+                # 2. Process pending tasks (Triage - Cloud/Local)
                 pending = self.get_pending_tasks()
                 if pending:
-                    logger.info(f"Found {len(pending)} pending tasks")
+                    logger.info(f"Found {len(pending)} pending tasks in Needs_Action")
                     for task in pending:
                         self.process_task(task)
 
-                # Process approved tasks (including LinkedIn posts)
-                self.process_approved_tasks()
+                # 3. Local-Only Actions
+                if FTE_ROLE == "local":
+                    # Process approved tasks (Execution)
+                    self.process_approved_tasks()
+                    
+                    # Merge Cloud Updates
+                    self.process_updates()
 
                 time.sleep(self.poll_interval)
             except KeyboardInterrupt:

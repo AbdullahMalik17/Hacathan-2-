@@ -517,5 +517,30 @@ def generate_summary(period: str = "weekly") -> str:
         return f"Error generating summary: {str(e)}"
 
 
+@mcp.tool()
+def get_user_info(username: str) -> str:
+    """
+    Get information about a Twitter user.
+
+    Args:
+        username: Twitter handle (without @)
+
+    Returns:
+        JSON string with user details
+    """
+    if not TWITTER_BEARER_TOKEN:
+        return json.dumps({"error": "Twitter credentials not configured"})
+
+    try:
+        client = TwitterAPIClient(TWITTER_BEARER_TOKEN)
+        endpoint = f"users/by/username/{username}"
+        params = {"user.fields": "description,public_metrics,verified,created_at"}
+        
+        info = client._make_request("GET", endpoint, data=params)
+        return json.dumps(info, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
 if __name__ == "__main__":
     mcp.run()
