@@ -35,13 +35,22 @@ env/
 
 # Sensitive files - NEVER commit
 .env
+.env.local
+.env.cloud
+.env.production
 config/credentials.json
 config/token.json
 config/.env
+config/.env.local
+config/.env.cloud
 config/whatsapp_data/
 *.key
 *.pem
 *.secret
+*.password
+oauth_tokens/
+secrets/
+credentials/
 
 # Local state
 config/processed_emails.json
