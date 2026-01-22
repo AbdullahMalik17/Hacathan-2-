@@ -778,3 +778,9 @@
 | 2026-01-22 12:29:38 | STARTUP | watching-whatsapp | SUCCESS | PID: 13308 |
 | 2026-01-22 12:29:38 | STARTUP | digital-fte-orchestrator | SUCCESS | PID: 7956 |
 | 2026-01-22 12:29:38 | STARTUP | vault-sync | SUCCESS | PID: 14604 |
+| 2026-01-22 12:30:55 | CRASH | watching-whatsapp | EXITED | Code: 1 |
+| 2026-01-22 12:31:05 | STARTUP | watching-whatsapp | SUCCESS | PID: 3632 |
+| 2026-01-22 12:32:11 | CRASH | watching-whatsapp | EXITED | Code: 1 |
+| 2026-01-22 12:32:22 | STARTUP | watching-whatsapp | SUCCESS | PID: 12712 |
+| 2026-01-22 12:33:50 | CRASH | watching-whatsapp | EXITED | Code: 1 |
+| 2026-01-22 12:34:00 | STARTUP | watching-whatsapp | SUCCESS | PID: 19556 |
