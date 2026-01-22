@@ -201,35 +201,56 @@ The WhatsApp Watcher cannot log in.
         """Scan for unread messages."""
         if not self.is_authenticated:
             return []
-            
+
         messages = []
         try:
             # Look for unread badges
             unread_selectors = await self.page.query_selector_all('span[aria-label*="unread"]')
-            
+
             for badge in unread_selectors:
                 try:
                     # Get parent container to find chat name
                     parent = await badge.evaluate_handle('el => el.closest("div[role=\'listitem\']")')
                     if not parent: continue
-                    
+
+                    # Extract chat name
                     chat_name_el = await parent.query_selector('span[title]')
                     chat_name = await chat_name_el.get_attribute('title') if chat_name_el else "Unknown"
-                    
+
+                    # Try to extract message preview
+                    message_preview = "New unread messages detected"
+                    try:
+                        # Look for message text in the chat list item
+                        preview_selectors = [
+                            'span[title]:not([aria-label])',  # Message preview text
+                            'span.selectable-text',            # Alternative selector
+                            'div._11JPr span'                  # Last message span
+                        ]
+
+                        for selector in preview_selectors:
+                            preview_el = await parent.query_selector(selector)
+                            if preview_el:
+                                preview_text = await preview_el.inner_text()
+                                if preview_text and preview_text != chat_name and len(preview_text) > 0:
+                                    message_preview = preview_text[:200]  # Limit length
+                                    break
+                    except Exception as e:
+                        logger.debug(f"Could not extract message preview for {chat_name}: {e}")
+
                     messages.append({
                         "sender": chat_name,
                         "chat_name": chat_name,
-                        "message": "New unread messages detected",
+                        "message": message_preview,
                         "timestamp": datetime.now().isoformat(),
-                        "is_known: contact": is_known_contact(chat_name),
+                        "is_known_contact": is_known_contact(chat_name),
                         "msg_id": f"{chat_name}_{datetime.now().timestamp()}"
                     })
                 except Exception as e:
                     logger.warning(f"Error processing unread badge: {e}")
-                    
+
         except Exception as e:
             logger.error(f"Error scanning unread chats: {e}")
-            
+
         return messages
 
     async def _send_message(self, chat_name: str, text: str) -> bool:
