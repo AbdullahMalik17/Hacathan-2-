@@ -31,7 +31,11 @@
       "Bash(docker pull:*)",
       "Bash(docker run:*)",
       "Bash(docker logs:*)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Bash(wc:*)",
+      "Bash(python3 -m pytest:*)",
+      "Bash(python3:*)",
+      "Bash(git config:*)"
     ]
   }
 }
