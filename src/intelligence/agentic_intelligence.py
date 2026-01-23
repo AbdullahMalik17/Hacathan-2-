@@ -218,37 +218,37 @@ class AgenticIntelligence:
 
         # Approach-specific reasoning
         if approach == ApproachDecision.EXECUTE_DIRECTLY:
-            reasons.append(f"✅ Simple task (complexity: {complexity.overall_score:.2f})")
-            reasons.append(f"✅ Low risk (risk score: {risk.overall_score:.2f})")
-            reasons.append(f"✅ Estimated {complexity.estimated_steps} step(s)")
-            reasons.append(f"✅ Can execute immediately in {complexity.estimated_time}")
+            reasons.append(f"[OK] Simple task (complexity: {complexity.overall_score:.2f})")
+            reasons.append(f"[OK] Low risk (risk score: {risk.overall_score:.2f})")
+            reasons.append(f"[OK] Estimated {complexity.estimated_steps} step(s)")
+            reasons.append(f"[OK] Can execute immediately in {complexity.estimated_time}")
 
         elif approach == ApproachDecision.SPEC_DRIVEN:
             # Explain why spec is needed
             if complexity.overall_score >= self.THRESHOLDS['complexity_spec_required']:
-                reasons.append(f"⚠️ High complexity ({complexity.overall_score:.2f}) - needs planning")
+                reasons.append(f"[WARN] High complexity ({complexity.overall_score:.2f}) - needs planning")
 
             if risk.overall_score >= self.THRESHOLDS['risk_spec_required']:
-                reasons.append(f"⚠️ Significant risk ({risk.overall_score:.2f}) - needs careful approach")
+                reasons.append(f"[WARN] Significant risk ({risk.overall_score:.2f}) - needs careful approach")
 
             if complexity.estimated_steps >= self.THRESHOLDS['min_steps_for_spec']:
-                reasons.append(f"⚠️ Multi-step task ({complexity.estimated_steps} steps) - needs breakdown")
+                reasons.append(f"[WARN] Multi-step task ({complexity.estimated_steps} steps) - needs breakdown")
 
             if risk.factors.get('financial_impact', 0) > 0:
                 amount = analysis.entities.get('amount', 'unknown')
-                reasons.append(f"💰 Financial transaction (${amount}) - requires spec for safety")
+                reasons.append(f"[MONEY] Financial transaction (${amount}) - requires spec for safety")
 
             if risk.requires_approval:
-                reasons.append("📋 Requires approval per company policy")
+                reasons.append("[POLICY] Requires approval per company policy")
 
-            reasons.append(f"📝 Creating detailed spec first (est. {complexity.estimated_time})")
+            reasons.append(f"[SPEC] Creating detailed spec first (est. {complexity.estimated_time})")
 
         elif approach == ApproachDecision.CLARIFICATION_NEEDED:
-            reasons.append(f"❓ Found {len(analysis.ambiguities)} ambiguities:")
+            reasons.append(f"[QUESTION] Found {len(analysis.ambiguities)} ambiguities:")
             for amb in analysis.ambiguities[:3]:  # Show top 3
-                reasons.append(f"  • {amb}")
+                reasons.append(f"  - {amb}")
             if len(analysis.ambiguities) > 3:
-                reasons.append(f"  • ... and {len(analysis.ambiguities) - 3} more")
+                reasons.append(f"  - ... and {len(analysis.ambiguities) - 3} more")
 
         # Add complexity reasoning
         if complexity.reasoning:
@@ -322,34 +322,27 @@ class AgenticIntelligence:
         explanation = []
 
         # Header
-        explanation.append(f"🧠 Agentic Intelligence Decision")
+        explanation.append(f"Agentic Intelligence Decision")
         explanation.append(f"{'='*50}")
 
         # Approach
-        approach_emoji = {
-            ApproachDecision.EXECUTE_DIRECTLY: "⚡",
-            ApproachDecision.SPEC_DRIVEN: "📝",
-            ApproachDecision.CLARIFICATION_NEEDED: "❓",
-            ApproachDecision.PROACTIVE_SUGGEST: "💡",
-        }
-        emoji = approach_emoji.get(decision.approach, "🤔")
-        explanation.append(f"\n{emoji} Recommended Approach: {decision.approach.value.upper()}")
+        explanation.append(f"\nRecommended Approach: {decision.approach.value.upper()}")
         explanation.append(f"Confidence: {decision.confidence:.1%}")
 
         # Scores
-        explanation.append(f"\n📊 Analysis:")
-        explanation.append(f"  • Complexity: {decision.complexity.overall_score:.2f} ({decision.complexity.estimated_steps} steps)")
-        explanation.append(f"  • Risk: {decision.risk.overall_score:.2f}")
-        explanation.append(f"  • Estimated Duration: {decision.estimated_duration}")
-        explanation.append(f"  • Approval Required: {'Yes' if decision.approval_required else 'No'}")
+        explanation.append(f"\nAnalysis:")
+        explanation.append(f"  - Complexity: {decision.complexity.overall_score:.2f} ({decision.complexity.estimated_steps} steps)")
+        explanation.append(f"  - Risk: {decision.risk.overall_score:.2f}")
+        explanation.append(f"  - Estimated Duration: {decision.estimated_duration}")
+        explanation.append(f"  - Approval Required: {'Yes' if decision.approval_required else 'No'}")
 
         # Reasoning
-        explanation.append(f"\n💭 Reasoning:")
+        explanation.append(f"\nReasoning:")
         for reason in decision.reasoning:
             explanation.append(f"  {reason}")
 
         # Next Steps
-        explanation.append(f"\n👉 Next Steps:")
+        explanation.append(f"\nNext Steps:")
         for step in decision.recommended_next_steps:
             explanation.append(f"  {step}")
 
