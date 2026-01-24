@@ -14,6 +14,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field, asdict
 
+# Firebase Integration
+try:
+    from .firebase_config import init_firebase
+    HAS_FIREBASE = True
+except ImportError:
+    HAS_FIREBASE = False
+    print("[PushService] Firebase config not found.")
+
 # Web Push library for VAPID-based push notifications
 try:
     from pywebpush import webpush, WebPushException
@@ -25,10 +33,11 @@ except ImportError:
 
 @dataclass
 class PushSubscription:
-    """Web Push subscription from a client device."""
-    endpoint: str
-    keys: Dict[str, str]  # p256dh and auth keys
+    """Push subscription from a client device (Web or Mobile)."""
+    endpoint: str  # For Web Push: URL, For Mobile: FCM Token
+    keys: Dict[str, str] = field(default_factory=dict) # For Web Push only
     device_name: str = "Unknown Device"
+    platform: str = "web"  # web, android, ios
     created_at: datetime = field(default_factory=datetime.now)
     last_used: datetime = field(default_factory=datetime.now)
     is_active: bool = True
@@ -38,6 +47,7 @@ class PushSubscription:
             "endpoint": self.endpoint,
             "keys": self.keys,
             "device_name": self.device_name,
+            "platform": self.platform,
             "created_at": self.created_at.isoformat(),
             "last_used": self.last_used.isoformat(),
             "is_active": self.is_active
@@ -47,8 +57,9 @@ class PushSubscription:
     def from_dict(cls, data: Dict[str, Any]) -> "PushSubscription":
         return cls(
             endpoint=data["endpoint"],
-            keys=data["keys"],
+            keys=data.get("keys", {}),
             device_name=data.get("device_name", "Unknown Device"),
+            platform=data.get("platform", "web"),
             created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat())),
             last_used=datetime.fromisoformat(data.get("last_used", datetime.now().isoformat())),
             is_active=data.get("is_active", True)
@@ -84,9 +95,7 @@ class NotificationPayload:
 class PushNotificationService:
     """
     Service to send push notifications to registered devices.
-
-    Uses VAPID (Voluntary Application Server Identification) for
-    secure web push notifications.
+    Supports Web Push (VAPID) and Firebase Cloud Messaging (Mobile).
     """
 
     def __init__(self, config_dir: str = None):
@@ -105,14 +114,17 @@ class PushNotificationService:
         self.subscriptions_file = self.config_dir / "subscriptions.json"
         self.vapid_file = self.config_dir / "vapid_keys.json"
 
-        # Load or generate VAPID keys
+        # Load or generate VAPID keys (for Web Push)
         self.vapid_claims = self._load_vapid_keys()
 
         # Load existing subscriptions
         self.subscriptions: List[PushSubscription] = self._load_subscriptions()
 
-        # Notification queue for batch processing
-        self.notification_queue: List[tuple] = []
+        # Initialize Firebase
+        if HAS_FIREBASE:
+            self.firebase_ready = init_firebase()
+        else:
+            self.firebase_ready = False
 
         print(f"[PushService] Initialized with {len(self.subscriptions)} subscription(s)")
 
@@ -123,7 +135,6 @@ class PushNotificationService:
                 return json.load(f)
 
         # Generate new VAPID keys if not exists
-        # In production, use: vapid --gen
         vapid_claims = {
             "sub": os.getenv("VAPID_SUBJECT", "mailto:admin@abdullahjunior.local"),
             "private_key": os.getenv("VAPID_PRIVATE_KEY", ""),
@@ -157,16 +168,18 @@ class PushNotificationService:
     def register_subscription(
         self,
         endpoint: str,
-        keys: Dict[str, str],
-        device_name: str = "Unknown Device"
+        keys: Dict[str, str] = None,
+        device_name: str = "Unknown Device",
+        platform: str = "web"
     ) -> bool:
         """
-        Register a new push subscription from a device.
+        Register a new push subscription.
 
         Args:
-            endpoint: Push service endpoint URL
-            keys: p256dh and auth keys from the subscription
+            endpoint: Push service endpoint URL (Web) or FCM Token (Mobile)
+            keys: p256dh and auth keys (Web only)
             device_name: Friendly name for the device
+            platform: web, android, ios
 
         Returns:
             True if subscription was registered successfully
@@ -177,32 +190,26 @@ class PushNotificationService:
                 sub.is_active = True
                 sub.last_used = datetime.now()
                 sub.device_name = device_name
+                sub.platform = platform
                 self._save_subscriptions()
-                print(f"[PushService] Updated existing subscription: {device_name}")
+                print(f"[PushService] Updated existing subscription: {device_name} ({platform})")
                 return True
 
         # Add new subscription
         subscription = PushSubscription(
             endpoint=endpoint,
-            keys=keys,
-            device_name=device_name
+            keys=keys or {},
+            device_name=device_name,
+            platform=platform
         )
         self.subscriptions.append(subscription)
         self._save_subscriptions()
 
-        print(f"[PushService] Registered new subscription: {device_name}")
+        print(f"[PushService] Registered new subscription: {device_name} ({platform})")
         return True
 
     def unregister_subscription(self, endpoint: str) -> bool:
-        """
-        Unregister a push subscription.
-
-        Args:
-            endpoint: Push service endpoint URL to remove
-
-        Returns:
-            True if subscription was removed
-        """
+        """Unregister a push subscription."""
         for sub in self.subscriptions:
             if sub.endpoint == endpoint:
                 sub.is_active = False
@@ -211,6 +218,58 @@ class PushNotificationService:
                 return True
         return False
 
+    async def send_fcm_notification(
+        self,
+        fcm_token: str,
+        notification: NotificationPayload,
+        platform: str = "android"
+    ) -> Dict[str, Any]:
+        """Send notification via Firebase Cloud Messaging."""
+        if not self.firebase_ready:
+            return {"success": False, "error": "Firebase not initialized"}
+
+        try:
+            from firebase_admin import messaging
+
+            # Construct message
+            # Note: We send 'data' payload primarily for flexibility
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title=notification.title,
+                    body=notification.body,
+                ),
+                data={k: str(v) for k, v in (notification.data or {}).items()},
+                token=fcm_token,
+                android=messaging.AndroidConfig(
+                    priority='high',
+                    notification=messaging.AndroidNotification(
+                        icon='notification_icon',
+                        color='#2563eb',
+                        channel_id='approvals' if 'approval' in notification.tag else 'default',
+                        tag=notification.tag
+                    )
+                ),
+                apns=messaging.APNSConfig(
+                    payload=messaging.APNSPayload(
+                        aps=messaging.Aps(
+                            alert=messaging.ApsAlert(
+                                title=notification.title,
+                                body=notification.body,
+                            ),
+                            badge=1,
+                            sound='default',
+                        )
+                    )
+                )
+            )
+
+            response = messaging.send(message)
+            return {"success": True, "message_id": response}
+
+        except Exception as e:
+            print(f"[PushService] FCM send failed: {e}")
+            return {"success": False, "error": str(e)}
+
     async def send_notification(
         self,
         notification: NotificationPayload,
@@ -218,7 +277,7 @@ class PushNotificationService:
     ) -> Dict[str, Any]:
         """
         Send a push notification to registered devices.
-
+        
         Args:
             notification: The notification payload to send
             device_name: Optional specific device to target
@@ -226,14 +285,6 @@ class PushNotificationService:
         Returns:
             Dict with success/failure counts
         """
-        if not HAS_WEBPUSH:
-            print("[PushService] pywebpush not available, logging notification only")
-            return {"sent": 0, "failed": 0, "reason": "pywebpush not installed"}
-
-        if not self.vapid_claims.get("private_key"):
-            print("[PushService] VAPID keys not configured")
-            return {"sent": 0, "failed": 0, "reason": "VAPID keys not configured"}
-
         active_subs = [s for s in self.subscriptions if s.is_active]
 
         if device_name:
@@ -247,29 +298,48 @@ class PushNotificationService:
 
         for sub in active_subs:
             try:
-                webpush(
-                    subscription_info={
-                        "endpoint": sub.endpoint,
-                        "keys": sub.keys
-                    },
-                    data=notification.to_json(),
-                    vapid_private_key=self.vapid_claims["private_key"],
-                    vapid_claims={
-                        "sub": self.vapid_claims["sub"]
-                    }
-                )
-                sub.last_used = datetime.now()
-                results["sent"] += 1
-                print(f"[PushService] Sent notification to {sub.device_name}")
+                if sub.platform == 'web':
+                    # Send via Web Push (VAPID)
+                    if HAS_WEBPUSH and self.vapid_claims.get("private_key"):
+                        webpush(
+                            subscription_info={
+                                "endpoint": sub.endpoint,
+                                "keys": sub.keys
+                            },
+                            data=notification.to_json(),
+                            vapid_private_key=self.vapid_claims["private_key"],
+                            vapid_claims={"sub": self.vapid_claims["sub"]}
+                        )
+                        sub.last_used = datetime.now()
+                        results["sent"] += 1
+                        print(f"[PushService] Sent Web Push to {sub.device_name}")
+                    else:
+                        print(f"[PushService] Skipping Web Push to {sub.device_name} (No VAPID)")
 
-            except WebPushException as e:
+                elif sub.platform in ['android', 'ios']:
+                    # Send via FCM
+                    if self.firebase_ready:
+                        res = await self.send_fcm_notification(sub.endpoint, notification, sub.platform)
+                        if res.get("success"):
+                            sub.last_used = datetime.now()
+                            results["sent"] += 1
+                            print(f"[PushService] Sent FCM to {sub.device_name}")
+                        else:
+                            results["failed"] += 1
+                            results["errors"].append(res.get("error"))
+                            # Check if token is invalid (TODO: improved error checking)
+                            print(f"[PushService] Failed FCM to {sub.device_name}: {res.get('error')}")
+                    else:
+                        print(f"[PushService] Skipping FCM to {sub.device_name} (Firebase not ready)")
+
+            except Exception as e:
                 results["failed"] += 1
                 results["errors"].append(str(e))
-
-                # If subscription is gone, mark as inactive
-                if e.response and e.response.status_code in [404, 410]:
+                
+                # Handle Web Push 410/404
+                if hasattr(e, 'response') and e.response and e.response.status_code in [404, 410]:
                     sub.is_active = False
-                    print(f"[PushService] Subscription expired: {sub.device_name}")
+                    print(f"[PushService] Web Push Subscription expired: {sub.device_name}")
                 else:
                     print(f"[PushService] Failed to send to {sub.device_name}: {e}")
 
@@ -284,22 +354,7 @@ class PushNotificationService:
         priority: str = "normal",
         context: Dict[str, Any] = None
     ) -> Dict[str, Any]:
-        """
-        Send a proactive suggestion notification.
-
-        This is used by the Agentic Intelligence Layer when it
-        detects an opportunity to help the user.
-
-        Args:
-            title: Suggestion title
-            description: Detailed description
-            action_id: Unique action identifier for handling response
-            priority: low, normal, high, urgent
-            context: Additional context data
-
-        Returns:
-            Send results
-        """
+        """Send a proactive suggestion notification."""
         # Determine actions based on priority
         if priority in ["high", "urgent"]:
             actions = [
@@ -340,22 +395,7 @@ class PushNotificationService:
         risk_score: float = 0.5,
         complexity_score: float = 0.5
     ) -> Dict[str, Any]:
-        """
-        Send an approval request notification for a task.
-
-        Used when Agentic Intelligence determines a task needs
-        user approval before execution.
-
-        Args:
-            task_id: Unique task identifier
-            task_title: Task title
-            task_description: Task description
-            risk_score: Calculated risk score (0-1)
-            complexity_score: Calculated complexity score (0-1)
-
-        Returns:
-            Send results
-        """
+        """Send an approval request notification for a task."""
         # Determine urgency indicator
         if risk_score >= 0.7:
             icon_prefix = "🔴"
@@ -396,18 +436,7 @@ class PushNotificationService:
         urgent_count: int,
         suggestions: List[str]
     ) -> Dict[str, Any]:
-        """
-        Send daily morning digest notification.
-
-        Args:
-            summary: One-line summary of the day
-            task_count: Total pending tasks
-            urgent_count: Urgent items count
-            suggestions: List of proactive suggestions
-
-        Returns:
-            Send results
-        """
+        """Send daily morning digest notification."""
         body_parts = [summary]
         if urgent_count > 0:
             body_parts.append(f"🔴 {urgent_count} urgent item(s)")
@@ -441,17 +470,7 @@ class PushNotificationService:
         task_title: str,
         result_summary: str
     ) -> Dict[str, Any]:
-        """
-        Notify user that a task was completed.
-
-        Args:
-            task_id: Task identifier
-            task_title: Task title
-            result_summary: Brief result summary
-
-        Returns:
-            Send results
-        """
+        """Notify user that a task was completed."""
         notification = NotificationPayload(
             title=f"✅ Completed: {task_title}",
             body=result_summary,

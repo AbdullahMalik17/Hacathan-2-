@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Testing
+tests/
+pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation
+docs/
+specs/
+*.md
+!README.md
+
+# Mobile app (separate deployment)
+mobile/
+frontend/
+
+# Config files with secrets
+config/*.json
+config/.env
+!config/.env.example
+
+# Temporary files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Playwright/Browser cache
+config/whatsapp_data_bak/
+
+# Development
+scripts/
+tools/
+*.zip

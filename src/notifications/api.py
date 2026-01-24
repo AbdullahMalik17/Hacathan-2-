@@ -8,12 +8,27 @@ These endpoints allow the PWA frontend to:
 4. Test notifications
 """
 
+import sys
+from pathlib import Path
+
+# Ensure imports work from any location
+current_dir = Path(__file__).parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Any, Dict, Optional
 from datetime import datetime
 
-from .push_service import get_push_service, NotificationPayload
+# Try multiple import paths for push_service
+try:
+    from .push_service import get_push_service, NotificationPayload
+except ImportError:
+    try:
+        from push_service import get_push_service, NotificationPayload
+    except ImportError:
+        from notifications.push_service import get_push_service, NotificationPayload
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 

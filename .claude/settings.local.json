@@ -39,7 +39,10 @@
       "Bash(npm install)",
       "Bash(npm run build:*)",
       "Bash(pkill:*)",
-      "Skill(project-designer)"
+      "Skill(project-designer)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "Bash(npm ls:*)"
     ]
   }
 }

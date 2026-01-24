@@ -8,22 +8,38 @@ This server provides:
 3. Dashboard data API
 4. WebSocket for real-time updates
 
-Run with: uvicorn src.api_server:app --reload --port 8000
+Run with:
+  cd src && uvicorn api_server:app --reload --port 8000
+  OR
+  python -m uvicorn src.api_server:app --reload --port 8000
 """
 
 import os
+import sys
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+# Add src to path for imports
+SRC_DIR = Path(__file__).parent
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-# Import notification API
-from notifications.api import router as notifications_router
+# Import notification API - try multiple import paths
+try:
+    from notifications.api import router as notifications_router
+except ImportError:
+    try:
+        from src.notifications.api import router as notifications_router
+    except ImportError:
+        notifications_router = None
+        print("[API Server] Warning: Notifications module not found")
 
 # Configuration
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -37,13 +53,17 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# CORS for frontend
+# CORS for frontend and mobile app
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3001",
-        "https://abdullahjunior.local"
+        "http://localhost:8081",  # Expo dev server
+        "http://10.0.2.2:8000",   # Android emulator
+        "https://abdullahjunior.local",
+        "https://abdullah-junior-api.fly.dev",
+        "*"  # Allow all for mobile app
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -51,7 +71,10 @@ app.add_middleware(
 )
 
 # Mount notification routes
-app.include_router(notifications_router)
+if notifications_router:
+    app.include_router(notifications_router)
+else:
+    print("[API Server] Notifications router not mounted")
 
 
 # ==================== Models ====================
@@ -69,6 +92,20 @@ class DashboardData(BaseModel):
     done_today_count: int
     urgent_count: int
     last_updated: str
+
+
+class ChatMessage(BaseModel):
+    """Chat message from user."""
+    message: str
+    context: Optional[Dict[str, Any]] = None
+
+
+class ChatResponse(BaseModel):
+    """Response from AI agent."""
+    response: str
+    action_taken: Optional[str] = None
+    task_created: Optional[str] = None
+    suggestions: Optional[List[str]] = None
 
 
 # ==================== Endpoints ====================
@@ -275,6 +312,331 @@ async def get_suggestions():
             pass
 
     return {"suggestions": suggestions}
+
+
+# ==================== Chat Endpoint ====================
+
+def parse_task_metadata(content: str) -> Dict[str, Any]:
+    """Parse YAML frontmatter and extract task metadata."""
+    import re
+
+    metadata = {
+        "title": "Untitled Task",
+        "priority": "medium",
+        "source": "unknown",
+        "risk_score": 0.3,
+        "complexity_score": 0.3,
+        "description": content[:300] if len(content) > 300 else content
+    }
+
+    # Extract YAML frontmatter
+    yaml_match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
+    if yaml_match:
+        yaml_content = yaml_match.group(1)
+
+        # Parse key-value pairs
+        for line in yaml_content.split('\n'):
+            if ':' in line:
+                key, value = line.split(':', 1)
+                key = key.strip().lower()
+                value = value.strip()
+
+                if key == 'type':
+                    metadata['source'] = value
+                elif key == 'priority':
+                    metadata['priority'] = value
+                elif key == 'subject' or key == 'title':
+                    metadata['title'] = value
+                elif key == 'risk_score':
+                    try:
+                        metadata['risk_score'] = float(value)
+                    except:
+                        pass
+                elif key == 'complexity_score':
+                    try:
+                        metadata['complexity_score'] = float(value)
+                    except:
+                        pass
+
+    # Try to extract title from content if not in frontmatter
+    if metadata['title'] == "Untitled Task":
+        # Look for ## heading
+        heading_match = re.search(r'^##\s+(.+)$', content, re.MULTILINE)
+        if heading_match:
+            metadata['title'] = heading_match.group(1).strip()
+        else:
+            # Use first line after frontmatter
+            lines = content.split('\n')
+            for line in lines:
+                line = line.strip()
+                if line and not line.startswith('---') and not line.startswith('#'):
+                    metadata['title'] = line[:80]
+                    break
+
+    # Detect priority from content
+    content_lower = content.lower()
+    if 'urgent' in content_lower or 'asap' in content_lower:
+        metadata['priority'] = 'urgent'
+    elif 'high priority' in content_lower or 'important' in content_lower:
+        metadata['priority'] = 'high'
+    elif 'low priority' in content_lower:
+        metadata['priority'] = 'low'
+
+    # Get description after frontmatter
+    if yaml_match:
+        desc_start = yaml_match.end()
+        desc_content = content[desc_start:].strip()
+        metadata['description'] = desc_content[:500] if len(desc_content) > 500 else desc_content
+
+    return metadata
+
+
+@app.get("/api/tasks/pending")
+async def get_pending_tasks(limit: int = 20):
+    """Get pending approval tasks with full metadata."""
+    pending = VAULT_PATH / "Pending_Approval"
+
+    if not pending.exists():
+        return {"tasks": [], "count": 0}
+
+    tasks = []
+    for f in sorted(pending.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True)[:limit]:
+        content = f.read_text()
+        metadata = parse_task_metadata(content)
+
+        tasks.append({
+            "id": f.stem,
+            "filename": f.name,
+            "title": metadata['title'],
+            "description": metadata['description'],
+            "priority": metadata['priority'],
+            "source": metadata['source'],
+            "risk_score": metadata['risk_score'],
+            "complexity_score": metadata['complexity_score'],
+            "created": datetime.fromtimestamp(f.stat().st_ctime).isoformat(),
+            "modified": datetime.fromtimestamp(f.stat().st_mtime).isoformat()
+        })
+
+    return {"tasks": tasks, "count": len(tasks)}
+
+
+@app.get("/api/activity")
+async def get_recent_activity(limit: int = 10):
+    """Get recent activity from audit logs."""
+    logs_dir = VAULT_PATH / "Logs" / "audit"
+
+    if not logs_dir.exists():
+        return {"activities": []}
+
+    activities = []
+    today = datetime.now().strftime("%Y-%m-%d")
+    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    for date_str in [today, yesterday]:
+        log_file = logs_dir / f"audit_{date_str}.jsonl"
+        if log_file.exists():
+            lines = log_file.read_text().strip().split('\n')
+            for line in reversed(lines[-limit:]):
+                try:
+                    entry = json.loads(line)
+                    activities.append({
+                        "id": entry.get('timestamp', ''),
+                        "type": entry.get('action', 'unknown'),
+                        "title": entry.get('action', '').replace('_', ' ').title(),
+                        "description": entry.get('details', {}).get('description', ''),
+                        "timestamp": entry.get('timestamp', ''),
+                        "status": entry.get('status', 'completed')
+                    })
+                except:
+                    pass
+
+        if len(activities) >= limit:
+            break
+
+    return {"activities": activities[:limit]}
+
+
+@app.post("/api/chat/send")
+async def send_chat_message(message: ChatMessage):
+    """
+    Send a message to the AI agent and get a response.
+
+    This endpoint handles user commands and questions, routing them
+    to the appropriate handler or AI model.
+    """
+    import re
+    from datetime import timedelta
+
+    user_message = message.message.strip()
+    response_text = ""
+    action_taken = None
+    task_created = None
+    suggestions = []
+
+    # Simple command parsing
+    user_lower = user_message.lower()
+
+    # Status commands
+    if any(kw in user_lower for kw in ['status', 'how are you', 'system status']):
+        # Get dashboard stats
+        dashboard = await get_dashboard()
+        response_text = (
+            f"System is running smoothly.\n\n"
+            f"**Current Status:**\n"
+            f"- Pending approvals: {dashboard['pending_count']}\n"
+            f"- In progress: {dashboard['in_progress_count']}\n"
+            f"- Completed today: {dashboard['done_today_count']}\n"
+            f"- Urgent items: {dashboard['urgent_count']}"
+        )
+        suggestions = ["Show pending approvals", "What's urgent?", "Today's summary"]
+
+    # Pending approvals
+    elif any(kw in user_lower for kw in ['pending', 'approvals', 'what needs approval']):
+        pending_tasks = await get_pending_tasks(limit=5)
+        if pending_tasks['count'] > 0:
+            task_list = "\n".join([
+                f"- **{t['title']}** ({t['priority']})"
+                for t in pending_tasks['tasks'][:5]
+            ])
+            response_text = f"You have {pending_tasks['count']} items waiting for approval:\n\n{task_list}"
+        else:
+            response_text = "Great news! No items pending approval right now."
+        suggestions = ["Approve all low-risk", "Show details", "Refresh"]
+
+    # Urgent items
+    elif any(kw in user_lower for kw in ['urgent', 'critical', 'important']):
+        dashboard = await get_dashboard()
+        if dashboard['urgent_count'] > 0:
+            response_text = f"You have {dashboard['urgent_count']} urgent items that need attention. Check the Approvals tab for details."
+        else:
+            response_text = "No urgent items at the moment. Everything is under control!"
+        suggestions = ["Show all tasks", "Status update"]
+
+    # Help / capabilities
+    elif any(kw in user_lower for kw in ['help', 'what can you do', 'capabilities']):
+        response_text = (
+            "I'm **Abdullah Junior**, your AI assistant. Here's what I can help with:\n\n"
+            "**Task Management:**\n"
+            "- Check pending approvals\n"
+            "- Review urgent items\n"
+            "- Get status updates\n\n"
+            "**Automation:**\n"
+            "- Draft emails and social posts\n"
+            "- Schedule LinkedIn content\n"
+            "- Monitor Gmail for important messages\n\n"
+            "**Business:**\n"
+            "- Weekly CEO briefings\n"
+            "- Transaction tracking (Odoo)\n"
+            "- Performance reports"
+        )
+        suggestions = ["Check status", "Pending approvals", "Today's summary"]
+
+    # Schedule / reminder commands
+    elif 'schedule' in user_lower or 'remind' in user_lower:
+        response_text = (
+            "I can help you schedule tasks! To create a scheduled task, "
+            "please provide:\n\n"
+            "1. What needs to be done\n"
+            "2. When it should happen\n\n"
+            "For example: 'Schedule a LinkedIn post about our product launch for tomorrow at 9am'"
+        )
+        action_taken = "awaiting_details"
+        suggestions = ["Schedule LinkedIn post", "Remind me tomorrow", "Set weekly reminder"]
+
+    # LinkedIn related
+    elif 'linkedin' in user_lower:
+        response_text = (
+            "I can help with LinkedIn! What would you like to do?\n\n"
+            "- Draft a new post\n"
+            "- Schedule content for later\n"
+            "- Check engagement on recent posts"
+        )
+        suggestions = ["Draft a post", "Schedule for tomorrow", "Check analytics"]
+
+    # Email related
+    elif 'email' in user_lower:
+        response_text = (
+            "Email assistance available! I can:\n\n"
+            "- Draft reply to recent emails\n"
+            "- Summarize inbox\n"
+            "- Flag important messages\n\n"
+            "What would you like me to do?"
+        )
+        suggestions = ["Check inbox", "Draft reply", "Summarize unread"]
+
+    # Create task
+    elif any(kw in user_lower for kw in ['create task', 'new task', 'add task']):
+        # Extract task description
+        task_desc = re.sub(r'(create|new|add)\s+task\s*:?\s*', '', user_message, flags=re.IGNORECASE).strip()
+
+        if task_desc:
+            # Create task file
+            task_id = f"Task_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+            task_file = VAULT_PATH / "Needs_Action" / f"{task_id}.md"
+
+            task_content = f"""---
+type: manual_task
+priority: medium
+created: {datetime.now().isoformat()}
+status: pending
+---
+
+## {task_desc}
+
+Created via mobile app chat.
+
+## Actions
+- [ ] Review and process
+"""
+            task_file.write_text(task_content)
+            response_text = f"Task created: **{task_desc}**\n\nI've added it to your Needs_Action queue."
+            task_created = task_id
+            action_taken = "task_created"
+        else:
+            response_text = "What task would you like me to create? Please describe what needs to be done."
+        suggestions = ["Show all tasks", "Create another task"]
+
+    # Default response - conversational AI
+    else:
+        # For unrecognized commands, provide helpful response
+        response_text = (
+            f"I understand you want help with: *\"{user_message}\"*\n\n"
+            "I'm still learning! Here are some things I can definitely help with right now:"
+        )
+        suggestions = [
+            "Check system status",
+            "Show pending approvals",
+            "What's urgent?",
+            "Create a new task"
+        ]
+
+    return {
+        "response": response_text,
+        "action_taken": action_taken,
+        "task_created": task_created,
+        "suggestions": suggestions,
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@app.get("/api/chat/history")
+async def get_chat_history(limit: int = 50):
+    """Get chat history (stored in a simple log file)."""
+    chat_log = VAULT_PATH / "Logs" / "chat_history.jsonl"
+
+    if not chat_log.exists():
+        return {"messages": []}
+
+    messages = []
+    lines = chat_log.read_text().strip().split('\n')
+    for line in lines[-limit:]:
+        try:
+            msg = json.loads(line)
+            messages.append(msg)
+        except:
+            pass
+
+    return {"messages": messages}
 
 
 # ==================== Main ====================
