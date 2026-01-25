@@ -8,6 +8,7 @@ import { ToastProvider } from '../context/ToastContext';
 import { useNotifications } from '../hooks/useNotifications';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
 import { OfflineBanner } from '../components/shared/OfflineBanner';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 const queryClient = new QueryClient();
 
@@ -34,8 +35,10 @@ function AppContent() {
 
 export default function RootLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AppContent />
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AppContent />
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

@@ -18,25 +18,29 @@ export const NotificationService = {
     let token;
 
     if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-      });
-      
-      // Create dedicated channels
-      await Notifications.setNotificationChannelAsync('approvals', {
-        name: 'Approvals',
-        importance: Notifications.AndroidImportance.HIGH,
-        sound: 'default',
-        enableVibrate: true,
-      });
-      
-      await Notifications.setNotificationChannelAsync('suggestions', {
-        name: 'Suggestions',
-        importance: Notifications.AndroidImportance.DEFAULT,
-      });
+      try {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+        });
+
+        // Create dedicated channels
+        await Notifications.setNotificationChannelAsync('approvals', {
+          name: 'Approvals',
+          importance: Notifications.AndroidImportance.HIGH,
+          sound: 'default',
+          enableVibrate: true,
+        });
+
+        await Notifications.setNotificationChannelAsync('suggestions', {
+          name: 'Suggestions',
+          importance: Notifications.AndroidImportance.DEFAULT,
+        });
+      } catch (error) {
+        console.error('Error setting up notification channels:', error);
+      }
     }
 
     if (Device.isDevice) {
