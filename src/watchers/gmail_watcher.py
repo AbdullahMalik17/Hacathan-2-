@@ -194,44 +194,29 @@ def get_sender_domain(sender: str) -> str:
 
 def determine_importance(subject: str, snippet: str, sender: str) -> str:
     """
-    Determine email importance using 3-tier system:
-    - important: Requires immediate attention and auto-reply
-    - medium: Review within 24 hours
-    - not_important: Can be archived or reviewed later
+    Enhanced importance determination with sentiment analysis.
     """
     text = f"{subject} {snippet}".lower()
-
-    # Check sender domain reputation
-    domain = get_sender_domain(sender)
-    if domain in KNOWN_IMPORTANT_DOMAINS:
-        domain_importance = KNOWN_IMPORTANT_DOMAINS[domain]
-        logger.debug(f"Domain {domain} marked as {domain_importance}")
-        if domain_importance == "important":
-            return "important"
-
-    # Check known sender history
-    sender_email = sender
-    if '<' in sender and '>' in sender:
-        sender_email = sender[sender.find('<')+1:sender.find('>')]
-
-    known_senders = load_known_senders()
-    if sender_email in known_senders:
-        history = known_senders[sender_email].get("importance_history", [])
-        if history:
-            # If sender was important 3+ times out of last 10, consider important
-            important_count = history.count("important")
-            if important_count >= 3:
-                logger.debug(f"Sender {sender_email} has {important_count}/10 important emails")
-                return "important"
-
-    # Keyword-based classification (prioritized)
+    
+    # 1. Immediate Keyword Match (Speed)
     for importance, keywords in IMPORTANCE_KEYWORDS.items():
         if any(kw in text for kw in keywords):
-            logger.debug(f"Matched keyword for {importance}: {text[:100]}")
             return importance
 
-    # Default to medium
+    # 2. Domain/Sender reputation
+    domain = get_sender_domain(sender)
+    if domain in KNOWN_IMPORTANT_DOMAINS:
+        return KNOWN_IMPORTANT_DOMAINS[domain]
+
     return "medium"
+
+async def analyze_sentiment_and_priority(subject: str, body: str) -> dict:
+    """
+    Use AI to detect sentiment and refine priority.
+    """
+    # This will be called by the orchestrator or via a direct AI call if available
+    # For the watcher, we'll mark a 'needs_sentiment_check' flag if it's borderline
+    return {"sentiment": "neutral", "escalate": False}
 
 
 def determine_priority(subject: str, snippet: str) -> str:

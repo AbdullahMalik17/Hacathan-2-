@@ -19,26 +19,26 @@ function AppContent() {
   useOfflineQueue();
 
   return (
-    <SafeAreaProvider>
-      <ToastProvider>
-        <View className="flex-1 bg-background">
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack>
-          <OfflineBanner />
-          <StatusBar style="light" />
-        </View>
-      </ToastProvider>
-    </SafeAreaProvider>
+    <View className="flex-1 bg-background">
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+      <OfflineBanner />
+      <StatusBar style="light" />
+    </View>
   );
 }
 
 export default function RootLayout() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <AppContent />
-      </QueryClientProvider>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>
+            <AppContent />
+          </ToastProvider>
+        </QueryClientProvider>
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }

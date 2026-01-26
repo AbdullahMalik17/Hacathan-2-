@@ -1,11 +1,12 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import Config from '../config/AppConfig';
 
-const DEFAULT_BASE_URL = 'http://10.0.2.2:8000'; // Android emulator localhost
+const DEFAULT_BASE_URL = Config.API_BASE_URL; // Production Fly.io URL
 
 const api = axios.create({
-  timeout: 10000,
+  timeout: Config.API_TIMEOUT || 10000,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -52,6 +53,12 @@ export const apiService = {
       device_name: deviceName,
       platform: Platform.OS,
     }),
+
+  // Suggestions
+  getSuggestions: () => api.get('/api/suggestions'),
+
+  // Drafts
+  getDraftsCount: () => api.get('/api/drafts/count'),
 
   // Health
   health: () => api.get('/api/health'),

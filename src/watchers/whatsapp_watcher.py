@@ -42,6 +42,9 @@ DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 HEADLESS = os.getenv("WHATSAPP_HEADLESS", "false").lower() == "true"
 AUTO_REPLY_ENABLED = os.getenv("WHATSAPP_AUTO_REPLY", "false").lower() == "true"
 
+# Auto-reply configuration
+AUTO_REPLY_IMPORTANCE_THRESHOLD = os.getenv("WHATSAPP_AUTO_REPLY_THRESHOLD", "high")  # Options: urgent, high, medium, low
+
 # Priority keywords
 PRIORITY_KEYWORDS = {
     "urgent": ["urgent", "asap", "emergency", "immediately", "critical"],
@@ -136,6 +139,112 @@ def log_action(action: str, details: Dict[str, Any]):
         except: logs = []
     logs.append(log_entry)
     log_file.write_text(json.dumps(logs, indent=2))
+
+
+def generate_whatsapp_auto_reply(sender: str, message: str, priority: str) -> str:
+    """Generate automatic reply for WhatsApp messages based on priority."""
+
+    # Extract sender name
+    sender_name = sender.split()[0] if sender.split() else "there"
+
+    reply_templates = {
+        "urgent": f"""Hi {sender_name},
+
+Thanks for reaching out urgently about: {message[:50]}...
+
+I've received your message and marked it as high priority. I'm reviewing it now and will get back to you within the hour.
+
+Best regards,
+Abdullah Junior
+(Digital FTE Assistant)""",
+
+        "high": f"""Hi {sender_name},
+
+Thanks for your message about: {message[:50]}...
+
+I've received it and will review it shortly. You can expect a response within 24 hours.
+
+Best regards,
+Abdullah Junior
+(Digital FTE Assistant)""",
+
+        "medium": f"""Hi {sender_name},
+
+Got your message: {message[:50]}...
+
+I'll review it and get back to you soon.
+
+Best regards,
+Abdullah Junior
+(Digital FTE Assistant)""",
+
+        "low": f"""Hi {sender_name},
+
+Thanks for your message.
+
+I've received it and will respond when I can.
+
+Best regards,
+Abdullah Junior
+(Digital FTE Assistant)"""
+    }
+
+    return reply_templates.get(priority, reply_templates["medium"])
+
+
+def should_send_auto_reply(priority: str) -> bool:
+    """Determine if auto-reply should be sent based on priority threshold."""
+    priority_levels = {"low": 0, "medium": 1, "high": 2, "urgent": 3}
+    threshold_level = priority_levels.get(AUTO_REPLY_IMPORTANCE_THRESHOLD, 2)  # Default to "high"
+    message_level = priority_levels.get(priority, 1)  # Default to "medium"
+
+    return message_level >= threshold_level
+
+
+async def send_whatsapp_auto_reply(page: Page, contact_name: str, message: str, priority: str) -> bool:
+    """Send automatic reply to WhatsApp contact."""
+    if not AUTO_REPLY_ENABLED:
+        logger.info(f"Auto-reply disabled, skipping reply to {contact_name}")
+        return False
+
+    if not should_send_auto_reply(priority):
+        logger.info(f"Priority {priority} below threshold {AUTO_REPLY_IMPORTANCE_THRESHOLD}, skipping auto-reply to {contact_name}")
+        return False
+
+    if DRY_RUN:
+        logger.info(f"[DRY RUN] Would send auto-reply to {contact_name} with priority {priority}")
+        return True
+
+    try:
+        # Search for the contact
+        search_box = 'div[contenteditable="true"][data-tab="3"]'
+        await page.wait_for_selector(search_box, timeout=5000)
+        await page.fill(search_box, contact_name)
+        await asyncio.sleep(2)  # Wait for search results
+        await page.press(search_box, "Enter")
+        await asyncio.sleep(1)
+
+        # Generate the reply message
+        reply_message = generate_whatsapp_auto_reply(contact_name, message, priority)
+
+        # Type and send the message
+        input_selector = 'div[contenteditable="true"][data-tab="10"]'
+        try:
+            await page.wait_for_selector(input_selector, timeout=5000)
+        except:
+            # Fallback selector
+            input_selector = 'div[data-testid="conversation-compose-box-input"]'
+            await page.wait_for_selector(input_selector, timeout=5000)
+
+        await page.fill(input_selector, reply_message)
+        await asyncio.sleep(0.5)
+        await page.press(input_selector, "Enter")
+
+        logger.info(f"Auto-reply sent to {contact_name} (priority: {priority})")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send auto-reply to {contact_name}: {e}")
+        return False
 
 class WhatsAppWatcher:
     def __init__(self):
@@ -399,24 +508,34 @@ The WhatsApp Watcher cannot log in.
         ensure_directories()
         await self.start()
         logger.info(f"WhatsApp Watcher Running (Poll: {POLL_INTERVAL}s)")
-        
+
         while True:
             try:
                 # 1. Process Incoming
                 unread = await self.get_unread_chats()
                 for msg in unread:
                     if msg.get("msg_id") not in self.processed_messages:
+                        # Determine priority for auto-reply decision
+                        message_text = msg.get("message", "")
+                        sender = msg.get("sender", "Unknown")
+                        is_known = msg.get("is_known_contact", False)
+                        priority = determine_priority(message_text, is_known)
+
+                        # Create task file first
                         filepath = create_task_file(msg)
                         if filepath:
                             self.processed_messages.add(msg.get("msg_id"))
                             log_action("whatsapp_received", {"chat": msg.get("chat_name")})
-                
+
+                            # Send auto-reply if enabled and priority threshold met
+                            await send_whatsapp_auto_reply(self.page, sender, message_text, priority)
+
                 # 2. Process Outbox
                 await self.process_outbox()
 
-            except Exception as e: 
+            except Exception as e:
                 logger.error(f"Loop Error: {e}")
-                
+
             await asyncio.sleep(POLL_INTERVAL)
 
 

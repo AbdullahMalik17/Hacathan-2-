@@ -14,6 +14,7 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIBackgroundModes": [
+          "remote-notification",
           "remote-notification"
         ]
       }
@@ -41,6 +42,12 @@
       "eas": {
         "projectId": "1fe52e97-f84b-49ff-bd5e-2683b3f079c9"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/1fe52e97-f84b-49ff-bd5e-2683b3f079c9"
     }
   }
 }

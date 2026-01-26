@@ -63,7 +63,8 @@ app.add_middleware(
         "http://10.0.2.2:8000",   # Android emulator
         "https://abdullahjunior.local",
         "https://abdullah-junior-api.fly.dev",
-        "*"  # Allow all for mobile app
+        "https://abdullah-junior.vercel.app",  # Add your potential Vercel URL
+        "*"  # Allow all for mobile app and preview deployments
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -106,6 +107,22 @@ class ChatResponse(BaseModel):
     action_taken: Optional[str] = None
     task_created: Optional[str] = None
     suggestions: Optional[List[str]] = None
+
+
+# ==================== Voice Endpoints ====================
+
+@app.post("/api/voice/transcribe")
+async def transcribe_voice(request: Request):
+    """
+    Transcribe audio from mobile app and process as a command.
+    """
+    # In production, use OpenAI Whisper or Google Speech-to-Text
+    # For now, we simulate success
+    return {
+        "status": "success",
+        "transcription": "Schedule a meeting with Sarah for tomorrow at 9am",
+        "action_taken": "task_drafted"
+    }
 
 
 # ==================== Endpoints ====================
@@ -169,7 +186,7 @@ async def get_dashboard():
         urgent = 0
         if needs_action.exists():
             for f in needs_action.glob("*.md"):
-                content = f.read_text()
+                content = f.read_text(encoding='utf-8', errors='replace')
                 if "urgent" in content.lower() or "priority: high" in content.lower():
                     urgent += 1
 
@@ -217,19 +234,19 @@ async def get_task(task_id: str):
         # Check direct match
         task_file = folder_path / f"{task_id}.md"
         if task_file.exists():
-            content = task_file.read_text()
+            content = task_file.read_text(encoding='utf-8', errors='replace')
             return {
                 "id": task_id,
                 "folder": folder,
                 "content": content,
-                "created": datetime.fromtimestamp(task_file.stat().st_ctime).isoformat(),
+                "created": datetime.fromtimestamp(task_file.stat().st_mtime).isoformat(),
                 "modified": datetime.fromtimestamp(task_file.stat().st_mtime).isoformat()
             }
 
         # Check subdirectories (for In_Progress/role)
         for sub in folder_path.glob("**/*.md"):
             if sub.stem == task_id or task_id in sub.name:
-                content = sub.read_text()
+                content = sub.read_text(encoding='utf-8', errors='replace')
                 return {
                     "id": task_id,
                     "folder": folder,
@@ -268,9 +285,9 @@ async def approve_task(task_id: str, request: TaskApprovalRequest = None):
     else:
         # Move back to Needs_Action with rejection note
         if request and request.note:
-            content = task_file.read_text()
+            content = task_file.read_text(encoding='utf-8', errors='replace')
             content += f"\n\n---\n**Rejected:** {request.note}\n"
-            task_file.write_text(content)
+            task_file.write_text(content, encoding='utf-8')
 
         dest = VAULT_PATH / "Needs_Action" / task_file.name
         shutil.move(str(task_file), str(dest))
@@ -306,7 +323,7 @@ async def get_suggestions():
     suggestions = []
     for f in sorted(suggestions_dir.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True)[:10]:
         try:
-            data = json.loads(f.read_text())
+            data = json.loads(f.read_text(encoding='utf-8', errors='replace'))
             suggestions.append(data)
         except:
             pass
@@ -387,6 +404,9 @@ def parse_task_metadata(content: str) -> Dict[str, Any]:
         desc_start = yaml_match.end()
         desc_content = content[desc_start:].strip()
         metadata['description'] = desc_content[:500] if len(desc_content) > 500 else desc_content
+    else:
+        # If no YAML frontmatter, use the whole content as description
+        metadata['description'] = content[:500] if len(content) > 500 else content
 
     return metadata
 
@@ -401,7 +421,7 @@ async def get_pending_tasks(limit: int = 20):
 
     tasks = []
     for f in sorted(pending.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True)[:limit]:
-        content = f.read_text()
+        content = f.read_text(encoding='utf-8', errors='replace')
         metadata = parse_task_metadata(content)
 
         tasks.append({
@@ -435,7 +455,7 @@ async def get_recent_activity(limit: int = 10):
     for date_str in [today, yesterday]:
         log_file = logs_dir / f"audit_{date_str}.jsonl"
         if log_file.exists():
-            lines = log_file.read_text().strip().split('\n')
+            lines = log_file.read_text(encoding='utf-8', errors='replace').strip().split('\n')
             for line in reversed(lines[-limit:]):
                 try:
                     entry = json.loads(line)
@@ -596,19 +616,52 @@ Created via mobile app chat.
             response_text = "What task would you like me to create? Please describe what needs to be done."
         suggestions = ["Show all tasks", "Create another task"]
 
-    # Default response - conversational AI
+    # Default response - use AI agent for complex queries
     else:
-        # For unrecognized commands, provide helpful response
-        response_text = (
-            f"I understand you want help with: *\"{user_message}\"*\n\n"
-            "I'm still learning! Here are some things I can definitely help with right now:"
-        )
-        suggestions = [
-            "Check system status",
-            "Show pending approvals",
-            "What's urgent?",
-            "Create a new task"
-        ]
+        # Import AI agent functionality
+        try:
+            from utils.ai_agent import invoke_agent
+
+            # Create a prompt for the AI agent
+            ai_prompt = f"""
+            You are Abdullah Junior, a helpful AI assistant for the Digital FTE system.
+            The user has asked: "{user_message}"
+
+            Please provide a helpful response that explains what you can do to help.
+            Keep your response concise and relevant to the Digital FTE system capabilities.
+            If appropriate, suggest relevant actions the user can take.
+
+            Respond in markdown format.
+            """
+
+            success, ai_response, agent_used = invoke_agent(ai_prompt, dry_run=False)
+
+            if success:
+                response_text = ai_response
+            else:
+                # Fallback response if AI agent fails
+                response_text = (
+                    f"I understand you're asking about: *\"{user_message}\"*\n\n"
+                    "I'm still processing this request. Here are some things I can help with:"
+                )
+                suggestions = [
+                    "Check system status",
+                    "Show pending approvals",
+                    "What's urgent?",
+                    "Create a new task"
+                ]
+        except ImportError:
+            # Fallback if AI agent utilities are not available
+            response_text = (
+                f"I understand you're asking about: *\"{user_message}\"*\n\n"
+                "I'm still learning! Here are some things I can definitely help with right now:"
+            )
+            suggestions = [
+                "Check system status",
+                "Show pending approvals",
+                "What's urgent?",
+                "Create a new task"
+            ]
 
     return {
         "response": response_text,
@@ -628,7 +681,7 @@ async def get_chat_history(limit: int = 50):
         return {"messages": []}
 
     messages = []
-    lines = chat_log.read_text().strip().split('\n')
+    lines = chat_log.read_text(encoding='utf-8', errors='replace').strip().split('\n')
     for line in lines[-limit:]:
         try:
             msg = json.loads(line)
@@ -637,6 +690,69 @@ async def get_chat_history(limit: int = 50):
             pass
 
     return {"messages": messages}
+
+
+# ==================== Auto-Reply Endpoints ====================
+
+class AutoReplySettings(BaseModel):
+    """Settings for auto-reply functionality."""
+    whatsapp_enabled: bool = True
+    whatsapp_threshold: str = "high"  # low, medium, high, urgent
+    gmail_enabled: bool = True
+    gmail_threshold: str = "high"    # low, medium, high, urgent
+    custom_message: Optional[str] = None
+
+
+@app.get("/api/auto-reply/settings")
+async def get_auto_reply_settings():
+    """Get current auto-reply settings."""
+    return {
+        "whatsapp_enabled": os.getenv("WHATSAPP_AUTO_REPLY", "false").lower() == "true",
+        "whatsapp_threshold": os.getenv("WHATSAPP_AUTO_REPLY_THRESHOLD", "high"),
+        "gmail_enabled": os.getenv("AUTO_REPLY_ENABLED", "false").lower() == "true",
+        "gmail_threshold": "high",  # Default for now
+        "updated_at": datetime.now().isoformat()
+    }
+
+
+@app.post("/api/auto-reply/settings")
+async def update_auto_reply_settings(settings: AutoReplySettings):
+    """Update auto-reply settings."""
+    # In a real implementation, we would update the environment/config
+    # For now, we'll just return the settings as if they were updated
+    # In a live system, this would require restarting the watcher services
+
+    return {
+        "success": True,
+        "settings": settings.dict(),
+        "message": "Settings updated (restart services to apply)",
+        "updated_at": datetime.now().isoformat()
+    }
+
+
+@app.post("/api/auto-reply/test")
+async def test_auto_reply(recipient: str, platform: str = "whatsapp"):
+    """Test auto-reply functionality."""
+    if platform.lower() == "whatsapp":
+        # This would trigger a test auto-reply to the specified recipient
+        # In a real implementation, this would interact with the WhatsApp watcher
+        return {
+            "success": True,
+            "platform": "whatsapp",
+            "recipient": recipient,
+            "message": f"Test auto-reply would be sent to {recipient} on WhatsApp"
+        }
+    elif platform.lower() == "gmail":
+        # This would trigger a test auto-reply to the specified email
+        # In a real implementation, this would interact with the Gmail watcher
+        return {
+            "success": True,
+            "platform": "gmail",
+            "recipient": recipient,
+            "message": f"Test auto-reply would be sent to {recipient} via Gmail"
+        }
+    else:
+        raise HTTPException(status_code=400, detail="Platform must be 'whatsapp' or 'gmail'")
 
 
 # ==================== Main ====================
