@@ -1,0 +1,45 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="10"/>
+      <feOffset dx="5" dy="5" result="offsetblur"/>
+      <feFlood flood-color="rgba(0,0,0,0.3)"/>
+      <feComposite in2="offsetblur" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="512" cy="512" r="480" fill="url(#bgGradient)" filter="url(#shadow)"/>
+  
+  <!-- Robot/AI head outline -->
+  <rect x="280" y="280" width="464" height="464" rx="100" stroke="white" stroke-width="40" fill="none"/>
+  
+  <!-- Eyes -->
+  <circle cx="420" cy="420" r="40" fill="white"/>
+  <circle cx="604" cy="420" r="40" fill="white"/>
+  
+  <!-- Blink effect -->
+  <ellipse cx="420" cy="440" rx="35" ry="10" fill="#BFDBFE"/>
+  <ellipse cx="604" cy="440" rx="35" ry="10" fill="#BFDBFE"/>
+  
+  <!-- Mouth/Connector -->
+  <rect x="460" y="580" width="104" height="30" rx="15" fill="white"/>
+  
+  <!-- Circuit pattern -->
+  <path d="M300 600 L350 580 M400 620 L450 600 M500 640 L550 620 M600 600 L650 580 M700 620 L724 610" 
+        stroke="white" stroke-width="8" stroke-linecap="round" opacity="0.6"/>
+  
+  <!-- Digital FTE text (stylized) -->
+  <text x="512" y="750" text-anchor="middle" font-family="Arial, sans-serif" 
+        font-size="60" fill="white" font-weight="bold" opacity="0.9">DFT</text>
+  <text x="512" y="810" text-anchor="middle" font-family="Arial, sans-serif" 
+        font-size="30" fill="white" opacity="0.8">Digital FTE</text>
+</svg>

@@ -60,7 +60,7 @@ credentials/
 config/processed_emails.json
 config/hook_state.json
 config/current_prompt.txt
-
+config 
 # Logs
 Vault/Logs/*.json
 Vault/Logs/*.log
